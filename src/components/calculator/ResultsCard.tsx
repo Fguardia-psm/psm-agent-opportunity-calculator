@@ -33,13 +33,23 @@ export function ResultsCard({ result }: ResultsCardProps) {
     categoryRollups,
     moderatePathByYear,
     missingProducts,
+    productLines,
   } = result;
 
   const lastYear = moderatePathByYear[moderatePathByYear.length - 1];
+  const y2 = moderatePathByYear[1];
   const compoundRenewals =
     moderatePathByYear.reduce((s, y) => s + y.renewalProduction, 0) || 0;
   const y1Placed = moderatePathByYear[0]?.newPlaced ?? 0;
-  const y1Renewals = moderatePathByYear[0]?.renewalProduction ?? 0;
+  const y1Book = moderatePathByYear[0]?.bookAttachProduction ?? existingBookGapTotal.moderate;
+  const y1Pipe = moderatePathByYear[0]?.pipelineProduction ?? newPipelineYear1Total.moderate;
+  const renY2 = y2?.renewalProduction ?? 0;
+  const renLast = lastYear?.renewalProduction ?? 0;
+  const renGrowing = renLast + 0.5 >= renY2;
+
+  const maOpen = productLines.find(
+    (l) => l.productId === "medicare-advantage" && !l.isOffered,
+  );
 
   return (
     <Card
@@ -96,7 +106,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   <p className="text-xs font-semibold uppercase tracking-wide">Year-1 impact</p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  First-year commission only (book attach plus new pipeline)
+                  First-year commission only — one-time book attach plus new pipeline
                 </p>
                 <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
                   {formatCurrency(year1ImpactTotal.moderate)}
@@ -105,22 +115,21 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   Range {formatCurrency(year1ImpactTotal.low)} –{" "}
                   {formatCurrency(year1ImpactTotal.high)}
                 </p>
-                {y1Placed > 0 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    About {y1Placed.toFixed(1)} illustrative cases placed in Year 1 (planning)
-                  </p>
-                )}
+                <p className="mt-2 text-xs text-muted-foreground tabular-nums">
+                  Book attach {formatCurrency(y1Book)} · New pipeline {formatCurrency(y1Pipe)}
+                  {y1Placed > 0 ? ` · about ${y1Placed.toFixed(1)} cases` : ""}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
                 <div className="flex items-center gap-2 text-accent">
                   <TrendingUp className="size-4" />
                   <p className="text-xs font-semibold uppercase tracking-wide">
-                    {horizonYears}-year compounding path
+                    {horizonYears}-year cumulative path
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  New production each year plus renewals on retained in-force
+                  Sum of every year — new production plus renewals. This total climbs each year.
                 </p>
                 <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-primary sm:text-4xl">
                   {formatCurrency(pathCumulativeTotal.moderate)}
@@ -131,35 +140,46 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 </p>
                 {pathCumulativeTotal.moderate > 0 && year1ImpactTotal.moderate > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Path is{" "}
+                    Cumulative is{" "}
                     <span className="font-semibold text-foreground">
                       {(pathCumulativeTotal.moderate / year1ImpactTotal.moderate).toFixed(1)} times
                     </span>{" "}
-                    Year-1 — residual stack compounds
+                    Year-1 first-year dollars — residual renewals and ongoing new production add on.
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
                   label: "Existing-book attach",
-                  hint: "Year-1 first-year dollars on eligible clients you already have",
+                  hint: "One-time Year-1 first-year $ on your book",
                   value: existingBookGapTotal.moderate,
-                  range: existingBookGapTotal,
                 },
                 {
                   label: "New pipeline (Year 1)",
-                  hint: "Year-1 first-year dollars on this year’s new clients",
+                  hint: "Year-1 first-year $ on new clients",
                   value: newPipelineYear1Total.moderate,
-                  range: newPipelineYear1Total,
                 },
                 {
-                  label: "Renewals in path",
-                  hint: `Sum of residual dollars across ${horizonYears} years (compounding)`,
+                  label: "All renewals in path",
+                  hint: `Residual stack across ${horizonYears} years`,
                   value: compoundRenewals,
-                  range: null,
+                  highlight: true,
+                },
+                {
+                  label:
+                    y2 && lastYear
+                      ? `Renewals Y2 → Y${lastYear.year}`
+                      : "Renewal trajectory",
+                  hint: renGrowing
+                    ? "Residual growing as in-force builds"
+                    : "Residual after large catch-up",
+                  valueLabel:
+                    y2 && lastYear
+                      ? `${formatCurrency(renY2)} → ${formatCurrency(renLast)}`
+                      : "—",
                   highlight: true,
                 },
               ].map((item) => (
@@ -175,30 +195,44 @@ export function ResultsCard({ result }: ResultsCardProps) {
                     {item.label}
                   </p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-                    {formatCurrency(item.value)}
+                    {"valueLabel" in item && item.valueLabel
+                      ? item.valueLabel
+                      : formatCurrency(item.value as number)}
                   </p>
-                  {item.range && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {formatCurrency(item.range.low)} – {formatCurrency(item.range.high)}
-                    </p>
-                  )}
                   <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{item.hint}</p>
                 </div>
               ))}
             </div>
 
+            {maOpen && (
+              <div className="rounded-xl border border-border bg-muted/25 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+                <span className="font-medium text-foreground">Medicare Advantage residual: </span>
+                about {formatCurrency(maOpen.firstYearRevenue)} first-year and{" "}
+                {formatCurrency(maOpen.renewalRevenue)} renewal per case (about 50% — CMS national
+                FMV structure). Year-1 MA impact{" "}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatCurrency(maOpen.year1Impact.moderate)}
+                </span>
+                ; {horizonYears}-year MA path{" "}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {formatCurrency(maOpen.pathCumulative.moderate)}
+                </span>
+                .
+              </div>
+            )}
+
             {lastYear && (
               <p className="text-xs text-muted-foreground">
-                By Year {horizonYears} (planning), annual cash flow on these open lines is about{" "}
+                Through Year {horizonYears}, cumulative planning dollars reach{" "}
+                <span className="font-semibold text-foreground tabular-nums">
+                  {formatCurrency(lastYear.cumulativeTotal)}
+                </span>
+                . Year {horizonYears} alone is about{" "}
                 <span className="font-semibold text-foreground tabular-nums">
                   {formatCurrency(lastYear.total)}
                 </span>{" "}
-                ({formatCurrency(lastYear.firstYearProduction)} new plus{" "}
-                {formatCurrency(lastYear.renewalProduction)} renewals)
-                {y1Renewals === 0
-                  ? " — renewals start building after Year 1 placements persist."
-                  : ""}
-                .
+                ({formatCurrency(lastYear.pipelineProduction)} new +{" "}
+                {formatCurrency(lastYear.renewalProduction)} renewals).
               </p>
             )}
 

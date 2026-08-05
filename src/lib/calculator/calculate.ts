@@ -1,31 +1,35 @@
 /**
  * Agent Opportunity Calculator — pure math
  *
- * For each product the agent does NOT currently offer:
+ * Primary markets → treated as covered (products in those categories offered).
+ * Opportunity catalog excludes annuity (primary-identity only).
  *
- *   eligibleActive = book segment for that product (Medicare %, under-65 %, or full book)
- *   eligibleNew    = same segment applied to new clients / year
+ * Persistency (book retention):
+ *   renewed = priorInforce × persistency
+ *   Default floor = 85% (agent retains at least 85% of in-force each year)
+ *   Planning = 88%, high = 92%
  *
+ * Cash flow:
  *   Year 1 placed  = eligibleActive × attach + eligibleNew × attach
  *   Year t>1 placed = eligibleNew × attach
- *   Year-1 impact  = Year-1 placed × firstYearCommission   (first-year $ only)
- *   Renewals (t)   = priorInforce × persistency × renewalCommission
- *   Inforce end    = priorInforce × persistency + placed
- *   Path cumulative = Σ (firstYearProduction_t + renewalProduction_t)
- *
- * Compounding = growing renewal base on retained in-force + ongoing new production.
+ *   Year-1 impact  = Year-1 placed × firstYearCommission
+ *   Renewals (t)   = renewed × renewalCommission
+ *   Inforce end    = renewed + placed
+ *   Path cumulative = Σ (firstYear + renewal) — always climbs
  */
 
 import {
   ATTACH_RATES,
   CATEGORY_LABELS,
-  CATEGORY_ORDER,
   FIRST_YEAR_REVENUE,
   MAX_CLIENT_COUNT,
+  MIN_PERSISTENCY,
+  OPPORTUNITY_CATEGORIES,
   OPPORTUNITY_PRODUCT_IDS,
   PERSISTENCY_RATES,
   PRODUCT_BY_ID,
   PRODUCT_LABELS,
+  productsFromPrimaryCategories,
   RENEWAL_REVENUE,
   SCENARIO_KEYS,
 } from "./assumptions";
@@ -117,7 +121,8 @@ export function resolveRates(custom: CustomAssumptions | undefined): {
   }
 
   const modAttach = clamp(custom.attachModeratePercent, 1, 40) / 100;
-  const modPers = clamp(custom.persistencyModeratePercent, 50, 98) / 100;
+  // Floor at MIN_PERSISTENCY (85%) — agent retains at least 85% of book
+  const modPers = clamp(custom.persistencyModeratePercent, MIN_PERSISTENCY * 100, 98) / 100;
 
   return {
     attach: {
@@ -126,9 +131,9 @@ export function resolveRates(custom: CustomAssumptions | undefined): {
       high: clamp(modAttach * 1.5, 0.02, 0.6),
     },
     persistency: {
-      low: clamp(modPers - 0.05, 0.5, 0.97),
-      moderate: modPers,
-      high: clamp(modPers + 0.05, 0.55, 0.98),
+      low: Math.max(MIN_PERSISTENCY, clamp(modPers - 0.03, MIN_PERSISTENCY, 0.97)),
+      moderate: Math.max(MIN_PERSISTENCY, modPers),
+      high: Math.max(MIN_PERSISTENCY, clamp(modPers + 0.04, MIN_PERSISTENCY, 0.98)),
     },
     usedCustom: true,
   };
@@ -157,7 +162,6 @@ function resolveProductRevenue(
   };
 }
 
-/** Eligible client counts for a product from book segments */
 export function eligibleCounts(
   productId: OpportunityProductId,
   activeClients: number,
@@ -172,7 +176,7 @@ export function eligibleCounts(
   let share = 1;
   if (def.eligibility === "medicare") share = med;
   else if (def.eligibility === "under65") share = u65;
-  else share = 1; // broad — full book; place rate keeps it conservative
+  else share = 1;
 
   return {
     eligibleActive: activeClients * share,
@@ -180,6 +184,10 @@ export function eligibleCounts(
   };
 }
 
+/**
+ * Build multi-year cash path for one product under one attach/persistency pair.
+ * Persistency is applied as: renewedCases = priorInforce × persistency (≥ 85% by default).
+ */
 export function buildProductPath(
   eligibleActive: number,
   eligibleNew: number,
@@ -192,23 +200,32 @@ export function buildProductPath(
 ): YearCashflow[] {
   const years: YearCashflow[] = [];
   let inforce = 0;
+  let cumulative = 0;
+  // Never allow modeled retention below the business floor
+  const pers = Math.max(MIN_PERSISTENCY, persistency);
 
   for (let year = 1; year <= horizonYears; year++) {
     const pipelinePlaced = eligibleNew * attach;
     const catchUpPlaced = year === 1 && existingBookAttach ? eligibleActive * attach : 0;
     const newPlaced = pipelinePlaced + catchUpPlaced;
 
-    const renewed = inforce * persistency;
+    const renewed = inforce * pers;
     const renewalProduction = renewed * renewalRevenue;
-    const firstYearProduction = newPlaced * firstYearRevenue;
+    const bookAttachProduction = catchUpPlaced * firstYearRevenue;
+    const pipelineProduction = pipelinePlaced * firstYearRevenue;
+    const firstYearProduction = bookAttachProduction + pipelineProduction;
     const total = firstYearProduction + renewalProduction;
     const inforceEnd = renewed + newPlaced;
+    cumulative += total;
 
     years.push({
       year,
+      bookAttachProduction,
+      pipelineProduction,
       firstYearProduction,
       renewalProduction,
       total,
+      cumulativeTotal: cumulative,
       inforceEnd,
       newPlaced,
     });
@@ -292,9 +309,10 @@ function buildInsight(
   reviewFrequency: CalculatorInputs["reviewFrequency"],
   usedCustom: boolean,
   primaryCategories: ProductCategory[],
+  persistencyModerate: number,
 ): string {
   if (result.hasFullPortfolio) {
-    return "You already mark every catalog line as offered. Next gains usually come from review consistency, persistency, carrier mix, and case quality — not adding another product logo.";
+    return "Your primary markets already cover every line in this opportunity catalog. Next gains usually come from review consistency, persistency, carrier mix, and case quality.";
   }
 
   const names = result.topOpportunities
@@ -317,19 +335,31 @@ function buildInsight(
     ? " Figures use your custom attach, persistency, and/or per-line commission overrides."
     : "";
 
-  return `${primary}the largest illustrative Year-1 and multi-year opportunities among lines you do not offer appear to be ${names}. Year-1 is first-year commission only; the multi-year path adds renewals on retained in-force — that residual stack is the compounding effect.${customHint}${reviewHint}`;
+  const persPct = Math.round(persistencyModerate * 100);
+
+  return `${primary}the largest illustrative Year-1 and multi-year opportunities outside those markets appear to be ${names}. Year-1 includes a one-time attach on your existing book; later years add renewals on the retained in-force (planning retention ${persPct}% — at least 85%). Cumulative dollars climb even when the Year-1 bar is largest.${customHint}${reviewHint}`;
 }
 
 function mergeYearPaths(paths: YearCashflow[][]): YearCashflow[] {
   if (paths.length === 0) return [];
   const years = paths[0].length;
   const merged: YearCashflow[] = [];
+  let cumulative = 0;
   for (let i = 0; i < years; i++) {
+    const bookAttachProduction = paths.reduce((s, p) => s + p[i].bookAttachProduction, 0);
+    const pipelineProduction = paths.reduce((s, p) => s + p[i].pipelineProduction, 0);
+    const firstYearProduction = paths.reduce((s, p) => s + p[i].firstYearProduction, 0);
+    const renewalProduction = paths.reduce((s, p) => s + p[i].renewalProduction, 0);
+    const total = paths.reduce((s, p) => s + p[i].total, 0);
+    cumulative += total;
     merged.push({
       year: i + 1,
-      firstYearProduction: paths.reduce((s, p) => s + p[i].firstYearProduction, 0),
-      renewalProduction: paths.reduce((s, p) => s + p[i].renewalProduction, 0),
-      total: paths.reduce((s, p) => s + p[i].total, 0),
+      bookAttachProduction,
+      pipelineProduction,
+      firstYearProduction,
+      renewalProduction,
+      total,
+      cumulativeTotal: cumulative,
       inforceEnd: paths.reduce((s, p) => s + p[i].inforceEnd, 0),
       newPlaced: paths.reduce((s, p) => s + p[i].newPlaced, 0),
     });
@@ -357,7 +387,7 @@ function buildCompareScenarios(
     {
       id: "open",
       title: "Open opportunity today",
-      description: `All lines you are not offering — full Year-1 and ${horizonYears}-year path still on the table.`,
+      description: `All lines outside your primary markets — full Year-1 and ${horizonYears}-year path still on the table.`,
       productLabels: allMissing.map((p) => p.label),
       capturedPath: emptyTotals(),
       remainingPath: pathCumulativeTotal,
@@ -406,7 +436,7 @@ function buildCompareScenarios(
 }
 
 function buildCategoryRollups(missingLines: ProductLineResult[]): CategoryRollup[] {
-  return CATEGORY_ORDER.map((category) => {
+  return OPPORTUNITY_CATEGORIES.map((category) => {
     const lines = missingLines.filter((l) => l.category === category);
     return {
       category,
@@ -432,14 +462,23 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
     newClientsPerYear === null ||
     medicareSharePercent === null ||
     under65SharePercent === null ||
-    !inputs.reviewFrequency ||
-    !inputs.helpInterest
+    !inputs.reviewFrequency
   ) {
     return null;
   }
 
   const { attach, persistency, usedCustom } = resolveRates(inputs.customAssumptions);
-  const offered = new Set(inputs.productsOffered);
+
+  // Guard: every scenario retains ≥ 85%
+  for (const key of SCENARIO_KEYS) {
+    if (persistency[key] < MIN_PERSISTENCY) {
+      persistency[key] = MIN_PERSISTENCY;
+    }
+  }
+
+  const productsOffered = productsFromPrimaryCategories(inputs.primaryCategories);
+  const offered = new Set(productsOffered);
+
   const missingProducts = OPPORTUNITY_PRODUCT_IDS.filter((id) => !offered.has(id));
   const offeredProducts = OPPORTUNITY_PRODUCT_IDS.filter((id) => offered.has(id));
   const hasFullPortfolio = missingProducts.length === 0;
@@ -471,7 +510,6 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
       persistency,
     );
 
-    // Offered lines: no gap; pipeline-only path for comparison
     const offeredPath = scenarioPathTotals(
       eligibleActive,
       eligibleNew,
@@ -541,7 +579,7 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
 
   const moderatePathByYear = mergeYearPaths(missingLines.map((p) => p.moderatePath));
   const portfolioScore = Math.round(
-    (missingProducts.length / OPPORTUNITY_PRODUCT_IDS.length) * 100,
+    (missingProducts.length / Math.max(1, OPPORTUNITY_PRODUCT_IDS.length)) * 100,
   );
 
   const partial = {
@@ -575,7 +613,13 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
     portfolioScore,
     portfolioBand: portfolioBand(portfolioScore),
     hasFullPortfolio,
-    insight: buildInsight(partial, inputs.reviewFrequency, usedCustom, inputs.primaryCategories),
+    insight: buildInsight(
+      partial,
+      inputs.reviewFrequency,
+      usedCustom,
+      inputs.primaryCategories,
+      persistency.moderate,
+    ),
     compareScenarios: buildCompareScenarios(
       topOpportunities,
       missingLines,
@@ -591,7 +635,7 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
 
 export function canCalculate(inputs: CalculatorInputs): boolean {
   return (
-    Boolean(inputs.state && inputs.reviewFrequency && inputs.helpInterest) &&
+    Boolean(inputs.state && inputs.reviewFrequency) &&
     inputs.primaryCategories.length > 0 &&
     parseClientCount(inputs.activeClients) !== null &&
     parseClientCount(inputs.newClientsPerYear) !== null &&

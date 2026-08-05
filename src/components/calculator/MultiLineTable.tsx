@@ -14,11 +14,12 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
   return (
     <Card className="print:break-inside-avoid">
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">Full product stack</CardTitle>
+        <CardTitle className="text-lg sm:text-xl">Opportunity product stack</CardTitle>
         <CardDescription>
-          Every line in the PSM opportunity catalog. Year-1 equals first-year commission only. Path
-          equals multi-year new production and renewals. Planning place rate {attachPct}% on eligible
-          clients.
+          Medicare, ACA, life, and ancillary lines only. Primary markets you selected are marked
+          covered. Annuity is a primary-focus choice and does not appear here. Year-1 equals
+          first-year commission; path equals multi-year new production and renewals. Planning place
+          rate {attachPct}%.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
@@ -52,7 +53,7 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                         : "bg-accent/15 text-accent",
                     )}
                   >
-                    {line.isOffered ? "Offered" : "Gap"}
+                    {line.isOffered ? "Covered" : "Gap"}
                   </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -125,7 +126,7 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                             : "bg-accent/15 text-accent",
                         )}
                       >
-                        {line.isOffered ? "Offered" : "Not offered"}
+                        {line.isOffered ? "Covered" : "Open"}
                       </span>
                     </td>
                     <td className="px-2 py-3.5 text-right tabular-nums text-muted-foreground">

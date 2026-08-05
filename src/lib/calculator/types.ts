@@ -85,9 +85,21 @@ export interface ScenarioTotals {
 
 export interface YearCashflow {
   year: number;
+  /** Year-1 only: first-year $ from one-time attach on existing book */
+  bookAttachProduction: number;
+  /** First-year $ from new clients that year (every year) */
+  pipelineProduction: number;
+  /**
+   * Total first-year production this year
+   * (= bookAttachProduction + pipelineProduction)
+   */
   firstYearProduction: number;
+  /** Renewal / residual / trail $ on retained in-force */
   renewalProduction: number;
+  /** firstYearProduction + renewalProduction */
   total: number;
+  /** Running sum of total through this year (always non-decreasing) */
+  cumulativeTotal: number;
   inforceEnd: number;
   newPlaced: number;
 }

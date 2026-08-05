@@ -7,6 +7,7 @@ import type {
   LeadSubmission,
   USStateCode,
 } from "@/lib/calculator/types";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -98,7 +99,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             productsOffered: inputs.productsOffered,
             missingProducts: result.missingProducts,
             reviewFrequency: inputs.reviewFrequency,
-            helpInterest: inputs.helpInterest,
+            helpInterest: inputs.helpInterest || "yes",
             year1ImpactTotal: result.year1ImpactTotal,
             pathCumulativeTotal: result.pathCumulativeTotal,
             portfolioScore: result.portfolioScore,
@@ -127,24 +128,41 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         <CardContent className="flex flex-col items-center gap-3 px-6 py-10 text-center">
           <CheckCircle2 className="size-10 text-accent" strokeWidth={1.75} />
           <h3 className="font-display text-xl font-semibold text-foreground">
-            Thank you — we received your request
+            Request received — a PSM teammate will follow up
           </h3>
           <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-            A PSM team member can help with contracting, training, and adding lines outside your
-            current toolkit.
+            Bring your estimate (or the save link above). We will focus on the open lines that
+            matter for your practice, not a generic pitch.
           </p>
         </CardContent>
       </Card>
     );
   }
 
+  const y1 = result ? formatCurrency(result.year1ImpactTotal.moderate) : null;
+  const path = result ? formatCurrency(result.pathCumulativeTotal.moderate) : null;
+  const top = result?.topOpportunities.slice(0, 3).map((p) => p.label) ?? [];
+
   return (
-    <Card id="lead-form" className="scroll-offset-deep print:hidden">
+    <Card id="lead-form" className="scroll-offset-deep print:hidden border-primary/15">
       <CardHeader>
-        <CardTitle className="text-xl sm:text-2xl">Want help from PSM?</CardTitle>
+        <CardTitle className="text-xl sm:text-2xl">
+          Request a portfolio review with PSM
+        </CardTitle>
         <CardDescription>
-          Optional. You already have save link, print, and email-yourself above. Use this if you
-          want a marketer follow-up on contracting or product mix.
+          {result && !result.hasFullPortfolio && y1 && path ? (
+            <>
+              You have seen the math — about {y1} Year-1 planning impact and about {path} over{" "}
+              {result.horizonYears} years on open lines
+              {top.length > 0 ? ` (${top.join(", ")})` : ""}. Tell us how to reach you. No
+              obligation to contract.
+            </>
+          ) : (
+            <>
+              Independent agents use PSM for appointments, training, and multi-line support. Share
+              how to reach you — no obligation to contract.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -174,7 +192,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Work email</Label>
               <Input
                 id="email"
                 type="email"
@@ -185,7 +203,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">Mobile phone</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -241,15 +259,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             >
               {(
                 [
-                  ["yes", "Yes"],
-                  ["no", "No"],
+                  ["yes", "Yes — already with PSM"],
+                  ["no", "No — not yet"],
                   ["not-sure", "Not sure"],
                 ] as const
               ).map(([value, label]) => (
                 <label
                   key={value}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 py-2 text-sm font-medium transition-colors",
+                    "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 py-2 text-center text-sm font-medium transition-colors",
                     form.contractedWithPsm === value
                       ? "border-primary/40 bg-primary/[0.04]"
                       : "border-border hover:bg-muted/40",
@@ -267,21 +285,27 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
 
           <div className="space-y-1.5">
             <Label htmlFor="message">
-              Message <span className="font-normal text-muted-foreground">(optional)</span>
+              What should we focus on?{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
             </Label>
             <Textarea
               id="message"
               value={form.message}
               onChange={(e) => set("message")(e.target.value)}
-              placeholder="Lines you are considering, training needs, market questions…"
+              placeholder="Example: annuity appointments, Medicare add-ons, ACA training…"
               rows={3}
             />
           </div>
 
-          <Button type="submit" size="lg" className="w-full sm:w-auto">
-            <Send className="size-4" />
-            Request a portfolio review
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button type="submit" size="lg" className="w-full sm:w-auto">
+              <Send className="size-4" />
+              Request my portfolio review
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              We use this to follow up on your estimate — not to sell consumer policies to you.
+            </p>
+          </div>
         </form>
       </CardContent>
     </Card>

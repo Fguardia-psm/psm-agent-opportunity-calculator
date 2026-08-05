@@ -20,14 +20,15 @@ export function Hero({ onStart }: HeroProps) {
         </div>
 
         <h1 className="font-display max-w-3xl text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.15rem] lg:leading-[1.12]">
-          See what you leave on the table when you only sell part of the book
+          See how much revenue you may be leaving on the table
         </h1>
 
         <p className="mt-5 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
-          For any independent agent — Medicare, ACA, life, annuity, ancillary, or mixed. Estimate{" "}
+          Built for any independent agent — Medicare, ACA, life, annuity, ancillary, or mixed.
+          Estimate{" "}
           <span className="font-medium text-foreground">Year-1 impact</span> and the{" "}
-          <span className="font-medium text-foreground">compounding multi-year path</span> (new
-          production and renewals) on lines you do not write today that PSM can help you add.
+          <span className="font-medium text-foreground">compounding multi-year path</span> on lines
+          you do not write today that PSM can help you add. Under two minutes. No login.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -36,7 +37,7 @@ export function Hero({ onStart }: HeroProps) {
             <ArrowRight className="size-4" />
           </Button>
           <p className="text-center text-sm text-muted-foreground sm:text-left">
-            No login. No client data. No obligation. Under two minutes.
+            Free · Private practice numbers only · No consumer data
           </p>
         </div>
 

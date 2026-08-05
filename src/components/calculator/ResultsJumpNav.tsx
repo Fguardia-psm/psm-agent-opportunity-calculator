@@ -7,7 +7,7 @@ const LINKS = [
   { href: "#stack", label: "Stack" },
   { href: "#playbook", label: "Playbook" },
   { href: "#share", label: "Save" },
-  { href: "#lead-form", label: "Contact" },
+  { href: "#lead-form", label: "Work with PSM" },
 ] as const;
 
 interface ResultsJumpNavProps {
@@ -29,7 +29,12 @@ export function ResultsJumpNav({ className }: ResultsJumpNavProps) {
           <a
             key={link.href}
             href={link.href}
-            className="shrink-0 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/[0.04] hover:text-foreground"
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              link.href === "#lead-form"
+                ? "border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.04] hover:text-foreground",
+            )}
           >
             {link.label}
           </a>

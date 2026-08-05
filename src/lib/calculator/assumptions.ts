@@ -7,7 +7,14 @@
  * - Other lines: carrier-set; defaults are mid-market industry illustrations
  *   at typical independent-agent contract levels — NOT official PSM schedules.
  *
- * Edit this file to update defaults without touching calculation logic.
+ * Persistency (book retention) — calibrated for face-to-face independent agents,
+ * not call-center / high-churn distribution:
+ *   Conservative 87% — soft year or newer book
+ *   Planning     90% — solid field relationship / annual review practice
+ *   High         94% — tight book management
+ * Floor 85% so the model never assumes call-center-level churn for this audience.
+ *
+ * Annuity is a primary-market identity only — not an opportunity line in results.
  */
 
 import type {
@@ -33,16 +40,22 @@ export interface ProductDefinition {
    * Eligibility pool: which segment of the agent's book can reasonably buy this.
    * - medicare: uses medicareSharePercent
    * - under65: uses under65SharePercent
-   * - broad: uses full book (life / annuity / many ancillaries)
+   * - broad: uses full book (life / most ancillaries)
    */
   eligibility: "medicare" | "under65" | "broad";
   /** Short note shown in assumptions / table tooltips */
   compensationSource: string;
+  /**
+   * If false, product is never scored as open opportunity (e.g. annuity —
+   * primary-market identity only).
+   */
+  includeInOpportunity: boolean;
 }
 
 /**
- * Full catalog — lines PSM can help agents add.
+ * Full catalog.
  * MA/PDP $ aligned to CMS CY2025 national FMV (~$626 initial / ~$313 renewal).
+ * Annuity rows exist for primary-market mapping only (includeInOpportunity: false).
  */
 export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   {
@@ -54,6 +67,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "medicare",
     compensationSource:
       "CMS CY2025 national FMV approximately $626 initial / $313 renewal (one-half). CT/PA/DC, CA/NJ, and territories differ.",
+    includeInOpportunity: true,
   },
   {
     id: "medicare-supplement",
@@ -64,6 +78,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "medicare",
     compensationSource:
       "Carrier-set. Planning default approximately $275 first-year / $55 renewal per policy (varies widely by plan and contract).",
+    includeInOpportunity: true,
   },
   {
     id: "pdp",
@@ -74,6 +89,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "medicare",
     compensationSource:
       "CMS sets PDP FMV (varies by year). Planning default approximately $100 initial / $50 renewal.",
+    includeInOpportunity: true,
   },
   {
     id: "aca-marketplace",
@@ -84,6 +100,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "under65",
     compensationSource:
       "Carrier- and state-set (often PMPM). Planning default approximately $300 first-year / $150 ongoing per enrollment.",
+    includeInOpportunity: true,
   },
   {
     id: "final-expense",
@@ -94,6 +111,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Typically about 80–120% of annual premium year 1; renewals about 5–10%. Default assumes about $600 premium at about 100% / about 8%.",
+    includeInOpportunity: true,
   },
   {
     id: "term-life",
@@ -104,6 +122,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Often about 80–100% of year-1 premium. Default assumes about $1,200–1,500 premium case at about 90% with a modest renewal.",
+    includeInOpportunity: true,
   },
   {
     id: "fixed-annuity",
@@ -113,7 +132,8 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 100,
     eligibility: "broad",
     compensationSource:
-      "Typically a percentage of premium (often about 2–5% on MYGA/fixed). Default assumes about $60k premium at about 3% plus modest trail. Override with your schedule.",
+      "Primary-market identity only — not scored as cross-sell opportunity in this calculator.",
+    includeInOpportunity: false,
   },
   {
     id: "fixed-indexed-annuity",
@@ -123,7 +143,8 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 150,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set percentage of premium (often higher than MYGA, product-specific). Default assumes about $75k premium mid-single-digit percentage plus optional trail. Override with your schedule.",
+      "Primary-market identity only — not scored as cross-sell opportunity in this calculator.",
+    includeInOpportunity: false,
   },
   {
     id: "hospital-indemnity",
@@ -134,6 +155,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Carrier-set. Planning default approximately $300 first-year / $90 renewal per policy.",
+    includeInOpportunity: true,
   },
   {
     id: "dental-vision-hearing",
@@ -144,6 +166,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Carrier-set (often a percentage of premium). Planning default approximately $120 first-year / $40 renewal.",
+    includeInOpportunity: true,
   },
   {
     id: "cancer-heart-stroke",
@@ -154,6 +177,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Carrier-set. Planning default approximately $200 first-year / $60 renewal.",
+    includeInOpportunity: true,
   },
   {
     id: "short-term-care",
@@ -164,6 +188,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     eligibility: "broad",
     compensationSource:
       "Carrier-set. Planning default approximately $350 first-year / $90 renewal.",
+    includeInOpportunity: true,
   },
 ];
 
@@ -190,11 +215,20 @@ export const ATTACH_RATES: Record<ScenarioKey, number> = {
   high: 0.15,
 };
 
-/** In-force persistency (share retained each year) */
+/**
+ * In-force persistency for face-to-face independent agents (not call center).
+ * Floor 85% — tool never models call-center-level annual churn for this audience.
+ */
+export const MIN_PERSISTENCY = 0.85;
+
+/**
+ * Conservative 87% · Planning 90% · High 94%
+ * Field agents who review annually typically sit near or above planning.
+ */
 export const PERSISTENCY_RATES: Record<ScenarioKey, number> = {
-  low: 0.8,
-  moderate: 0.85,
-  high: 0.9,
+  low: 0.87,
+  moderate: 0.9,
+  high: 0.94,
 };
 
 export const SCENARIO_KEYS: ScenarioKey[] = ["low", "moderate", "high"];
@@ -215,8 +249,18 @@ export const HORIZON_OPTIONS: { value: HorizonYears; label: string }[] = [
 export const ACTIVE_CLIENT_PRESETS = [25, 50, 100, 175, 250, 500, 1000] as const;
 export const NEW_CLIENT_PRESETS = [10, 25, 40, 75, 100, 150] as const;
 
-export const OPPORTUNITY_PRODUCT_IDS: OpportunityProductId[] =
-  PRODUCT_DEFINITIONS.map((p) => p.id);
+/** Lines that can appear as open opportunity (excludes annuity) */
+export const OPPORTUNITY_PRODUCT_IDS: OpportunityProductId[] = PRODUCT_DEFINITIONS.filter(
+  (p) => p.includeInOpportunity,
+).map((p) => p.id);
+
+/** Categories shown in opportunity stack / rollups */
+export const OPPORTUNITY_CATEGORIES: ProductCategory[] = [
+  "medicare",
+  "aca",
+  "life",
+  "ancillary",
+];
 
 export const PRODUCT_LABELS: Record<ProductId, string> = Object.fromEntries(
   PRODUCT_DEFINITIONS.map((p) => [p.id, p.label]),
@@ -246,9 +290,20 @@ export const PRIMARY_CATEGORY_OPTIONS: {
   { value: "medicare", label: "Medicare", hint: "MA, Med Supp, PDP" },
   { value: "aca", label: "ACA / Marketplace", hint: "Individual and family plans" },
   { value: "life", label: "Life", hint: "Term, final expense, and related" },
-  { value: "annuity", label: "Annuity", hint: "Fixed, MYGA, FIA" },
+  { value: "annuity", label: "Annuity", hint: "Fixed, MYGA, FIA — primary focus only" },
   { value: "ancillary", label: "Ancillary", hint: "HI, DVH, CI, STC, and related" },
 ];
+
+/**
+ * Map primary markets → product lines treated as already offered.
+ * Opportunity = opportunity catalog minus these.
+ */
+export function productsFromPrimaryCategories(
+  primary: ProductCategory[],
+): ProductId[] {
+  const set = new Set(primary);
+  return PRODUCT_DEFINITIONS.filter((p) => set.has(p.category)).map((p) => p.id);
+}
 
 export const ALL_PRODUCTS: {
   id: ProductId;
@@ -259,7 +314,7 @@ export const ALL_PRODUCTS: {
   id: p.id,
   label: p.label,
   category: p.category,
-  isOpportunity: true,
+  isOpportunity: p.includeInOpportunity,
 }));
 
 export const REVIEW_FREQUENCY_OPTIONS: { value: ReviewFrequency; label: string }[] = [
@@ -269,6 +324,7 @@ export const REVIEW_FREQUENCY_OPTIONS: { value: ReviewFrequency; label: string }
   { value: "every-annual-review", label: "Every annual review" },
 ];
 
+/** Kept for share/lead backward compatibility — not shown in the wizard */
 export const HELP_INTEREST_OPTIONS: { value: HelpInterest; label: string }[] = [
   { value: "yes", label: "Yes" },
   { value: "maybe", label: "Maybe" },
@@ -330,23 +386,46 @@ export const US_STATES: { code: USStateCode; name: string }[] = [
 ];
 
 export const DISCLAIMER_TEXT =
-  "Results are illustrative planning estimates only and are not a guarantee of income, commissions, client suitability, product availability, persistency, or sales results. Medicare Advantage and PDP figures reference CMS Fair Market Value structures and may differ by state, plan, and year. Annuity, life, ACA, and other product compensation is carrier- and contract-set and often a percentage of premium. Actual pay varies by carrier, product, state, contract level, client eligibility, persistency, chargebacks, and compliance requirements. Multi-year figures assume illustrative persistency and do not project your actual book. Agents are responsible for suitable, compliant recommendations for each consumer.";
+  "Results are illustrative planning estimates only and are not a guarantee of income, commissions, client suitability, product availability, persistency, or sales results. Medicare Advantage and PDP figures reference CMS Fair Market Value structures and may differ by state, plan, and year. Life, ACA, and ancillary product compensation is carrier- and contract-set and often a percentage of premium. Annuity is used only as a primary-market focus in this tool and is not scored as open cross-sell opportunity. Default persistency assumes face-to-face independent agents (planning about 90% of in-force retained each year), not call-center distribution. Actual pay varies by carrier, product, state, contract level, client eligibility, persistency, chargebacks, and compliance requirements. Multi-year figures assume illustrative persistency and do not project your actual book. Agents are responsible for suitable, compliant recommendations for each consumer.";
 
 export const PRIVACY_NOTE =
   "Do not enter consumer names, health information, policy numbers, or private client data. Use approximate practice-level counts only.";
 
+/** Three steps — primary markets replace a separate product checklist */
 export const WIZARD_STEPS = [
-  { id: "practice", title: "Your practice", description: "State and what you primarily write" },
+  {
+    id: "practice",
+    title: "Your practice",
+    description: "State and primary markets you write today",
+  },
   { id: "clients", title: "Your book", description: "Clients and eligibility mix" },
-  { id: "products", title: "What you offer", description: "Every line you write today" },
-  { id: "behavior", title: "How you work", description: "Reviews, help, and time horizon" },
+  {
+    id: "behavior",
+    title: "How you work",
+    description: "Review cadence and compounding horizon",
+  },
 ] as const;
 
 export const FAQ_ITEMS = [
   {
     question: "Who is this calculator for?",
     answer:
-      "Any independent insurance agent — Medicare, ACA, life, annuity, ancillary, or mixed. It estimates what you may leave on the table by not offering lines PSM can help you add, with Year-1 impact and multi-year compounding (new production plus renewals and trails).",
+      "Any independent insurance agent — Medicare, ACA, life, annuity, ancillary, or mixed. Pick your primary markets; we treat those as covered and estimate Year-1 impact and multi-year compounding on other lines PSM can help you add.",
+  },
+  {
+    question: "What retention rate do you assume?",
+    answer:
+      "Defaults are built for face-to-face independent field agents, not call centers. Planning assumes about 90% of in-force is retained each year (conservative 87%, high 94%). Call-center / high-churn books often run lower; if that is you, lower persistency in custom assumptions (floor 85%). Relationship-driven field books often land near or above planning.",
+  },
+  {
+    question: "Why do annual bars sometimes fall after Year 1 while the cumulative line rises?",
+    answer:
+      "Year 1 includes a one-time attach on your existing book, so the Year-1 bar is often tallest. Later years are new production plus renewals on retained in-force. Cumulative dollars (the compounding chart) always climb.",
+  },
+  {
+    question: "Why is annuity not in my opportunity results?",
+    answer:
+      "Annuity is available as a primary market so agents who mainly write annuities can size other lines. This version does not score annuity as an open opportunity line.",
   },
   {
     question: "Is this a guarantee of what I will earn?",
@@ -354,28 +433,18 @@ export const FAQ_ITEMS = [
       "No. Figures are planning estimates using published CMS FMV structure for MA and PDP (national defaults) and mid-market illustrations for carrier-set products — or your custom overrides. Actual commissions, renewals, chargebacks, and persistency vary.",
   },
   {
-    question: "How accurate are the dollar amounts?",
-    answer:
-      "Medicare Advantage defaults use CMS national Fair Market Value (approximately $626 initial / $313 renewal for CY2025 national). Annuity defaults assume a mid-premium case times a mid-single-digit percentage of premium (override with your contract). Med Supp, ACA, life, and ancillary defaults are industry mid-points because carriers set those schedules.",
-  },
-  {
     question: "How does Year-1 versus multi-year compounding work?",
     answer:
-      "Year-1 impact is first-year commission on (1) a one-time place-rate attach on eligible clients you already have, plus (2) new clients that year. Later years add new first-year production and renewal or trail on in-force cases that persist — that residual stack is the compounding effect.",
-  },
-  {
-    question: "What client data do I need?",
-    answer:
-      "None that is private. Enter approximate active clients or households, new clients per year, and rough percentages for Medicare-age versus under-65. Do not enter names, dates of birth, health information, or policy numbers.",
+      "Year-1 impact is first-year commission on (1) a one-time place-rate attach on eligible clients you already have, plus (2) new clients that year. Later years add new first-year production and renewal on retained in-force. Cumulative dollars climb even when the Year-1 bar is largest.",
   },
   {
     question: "Can I use my own commission assumptions?",
     answer:
-      "Yes. After you calculate, open “Use my contract assumptions” to set attach rate, persistency, and per-line first-year and renewal dollars. Results update live.",
+      "Yes. After you calculate, open “Use my contract assumptions” to set attach rate, persistency (minimum 85%), and per-line first-year and renewal dollars. Results update live.",
   },
   {
-    question: "Can I save or share my estimate?",
+    question: "What happens if I request a portfolio review?",
     answer:
-      "Yes. Copy a save link, copy a text summary, email yourself, or print to PDF. Links store practice-level inputs only — never private client data.",
+      "You opt in after seeing your numbers. A PSM team member can discuss contracting, training, and which open lines fit your practice. There is no obligation to contract.",
   },
 ] as const;

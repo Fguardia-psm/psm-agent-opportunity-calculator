@@ -4,7 +4,8 @@ export function defaultCustomAssumptions(): CustomAssumptions {
   return {
     useCustom: false,
     attachModeratePercent: 10,
-    persistencyModeratePercent: 85,
+    /** Planning default 90% — face-to-face independent field agent */
+    persistencyModeratePercent: 90,
     productOverrides: {},
   };
 }
@@ -15,8 +16,9 @@ export function defaultInputs(): CalculatorInputs {
     primaryCategories: [],
     activeClients: "",
     newClientsPerYear: "",
+    // Complementary book split (always total 100%)
     medicareSharePercent: "40",
-    under65SharePercent: "55",
+    under65SharePercent: "60",
     productsOffered: [],
     reviewFrequency: "",
     helpInterest: "",

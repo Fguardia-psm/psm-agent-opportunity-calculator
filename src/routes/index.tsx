@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { calculateOpportunity, canCalculate } from "@/lib/calculator/calculate";
 import { defaultInputs } from "@/lib/calculator/defaults";
+import { productsFromPrimaryCategories } from "@/lib/calculator/assumptions";
 import { buildShareUrl, decodeInputs, readShareParam } from "@/lib/calculator/share";
 import type { CalculationResult, CalculatorInputs, LeadSubmission } from "@/lib/calculator/types";
 import { Hero } from "@/components/calculator/Hero";
@@ -23,6 +24,7 @@ import { FaqSection } from "@/components/calculator/FaqSection";
 import { SeoContent } from "@/components/calculator/SeoContent";
 import { JsonLd } from "@/components/calculator/JsonLd";
 import { ResultsJumpNav } from "@/components/calculator/ResultsJumpNav";
+import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
@@ -46,8 +48,13 @@ function Home() {
     }
     const decoded = decodeInputs(param);
     if (decoded) {
-      setInputs(decoded);
-      const calc = calculateOpportunity(decoded);
+      // Always derive offered products from primary markets
+      const synced = {
+        ...decoded,
+        productsOffered: productsFromPrimaryCategories(decoded.primaryCategories),
+      };
+      setInputs(synced);
+      const calc = calculateOpportunity(synced);
       if (calc) {
         setResult(calc);
         setShowResults(true);
@@ -64,7 +71,12 @@ function Home() {
   }, [inputs, showResults]);
 
   const handleCalculate = useCallback(() => {
-    const next = calculateOpportunity(inputs);
+    const synced = {
+      ...inputs,
+      productsOffered: productsFromPrimaryCategories(inputs.primaryCategories),
+    };
+    setInputs(synced);
+    const next = calculateOpportunity(synced);
     if (!next) return;
     setResult(next);
     setShowResults(true);
@@ -86,9 +98,13 @@ function Home() {
   };
 
   const handleInputsChange = (next: CalculatorInputs) => {
-    setInputs(next);
+    const synced = {
+      ...next,
+      productsOffered: productsFromPrimaryCategories(next.primaryCategories),
+    };
+    setInputs(synced);
     if (showResults) {
-      setResult(calculateOpportunity(next));
+      setResult(calculateOpportunity(synced));
     }
   };
 
@@ -160,8 +176,8 @@ function Home() {
               Estimate Year-1 impact and multi-year compounding
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Tell us what you write today and your book mix. We will size opportunity on every
-              catalog line you do not offer — Medicare, ACA, life, annuity, and ancillary.
+              Tell us your primary markets and book mix. We treat those markets as covered and size
+              opportunity on Medicare, ACA, life, and ancillary lines outside them.
             </p>
             <p className="mt-2 text-xs font-medium text-muted-foreground">{PRIVACY_NOTE}</p>
           </div>
@@ -205,6 +221,7 @@ function Home() {
 
             <StateCallout state={inputs.state} />
             <ResultsCard result={result} />
+            <NextStepCta result={result} />
             <CustomAssumptionsEditor
               value={inputs.customAssumptions}
               onChange={(customAssumptions) =>
@@ -227,6 +244,7 @@ function Home() {
             <div id="share" className="scroll-offset-deep">
               <ShareActions inputs={inputs} result={result} />
             </div>
+            <NextStepCta result={result} />
             <div className="print:hidden">
               <AssumptionsPanel />
             </div>
