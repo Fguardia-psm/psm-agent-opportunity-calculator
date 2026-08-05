@@ -4,7 +4,7 @@ import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import appCss from "../styles.css?url";
 
 const APP_NAME =
-  "Insurance Agent Opportunity Calculator | Year-1 & Compounding | PSM Brokerage";
+  "Insurance Agent Opportunity Calculator | Year-1 and Compounding | PSM Brokerage";
 const DESCRIPTION =
   "Free calculator for any independent insurance agent. Estimate Year-1 commission impact and multi-year compounding on Medicare, ACA, life, annuity, and ancillary lines you do not offer. CMS-aligned MA defaults. No login, no client data.";
 

@@ -69,7 +69,6 @@ function Home() {
     setResult(next);
     setShowResults(true);
     requestAnimationFrame(() => {
-      // Prefer overview anchor so sticky header never covers the title
       document.getElementById("overview")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [inputs]);
@@ -158,10 +157,10 @@ function Home() {
         <section ref={calculatorRef} id="calculator" className="scroll-offset print:hidden">
           <div className="mb-5 max-w-2xl">
             <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Estimate Year-1 impact & multi-year compounding
+              Estimate Year-1 impact and multi-year compounding
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Tell us what you write today and your book mix. We'll size opportunity on every
+              Tell us what you write today and your book mix. We will size opportunity on every
               catalog line you do not offer — Medicare, ACA, life, annuity, and ancillary.
             </p>
             <p className="mt-2 text-xs font-medium text-muted-foreground">{PRIVACY_NOTE}</p>
@@ -200,7 +199,7 @@ function Home() {
                 PSM Agent Opportunity Calculator — illustrative estimate
               </p>
               <p className="text-sm text-muted-foreground">
-                Year-1 impact + multi-year compounding. Not a guarantee of income.
+                Year-1 impact and multi-year compounding. Not a guarantee of income.
               </p>
             </div>
 

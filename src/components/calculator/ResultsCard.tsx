@@ -65,7 +65,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
         </CardTitle>
         <CardDescription className="text-base">
           Based on {activeClients.toLocaleString()} clients/households and{" "}
-          {newClientsPerYear.toLocaleString()} new / year
+          {newClientsPerYear.toLocaleString()} new per year
           {!hasFullPortfolio && (
             <>
               {" "}
@@ -96,7 +96,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   <p className="text-xs font-semibold uppercase tracking-wide">Year-1 impact</p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  First-year commission only (book attach + new pipeline)
+                  First-year commission only (book attach plus new pipeline)
                 </p>
                 <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
                   {formatCurrency(year1ImpactTotal.moderate)}
@@ -107,7 +107,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 </p>
                 {y1Placed > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    ~{y1Placed.toFixed(1)} illustrative cases placed in Year 1 (planning)
+                    About {y1Placed.toFixed(1)} illustrative cases placed in Year 1 (planning)
                   </p>
                 )}
               </div>
@@ -120,7 +120,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  New production each year + renewals on retained in-force
+                  New production each year plus renewals on retained in-force
                 </p>
                 <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-primary sm:text-4xl">
                   {formatCurrency(pathCumulativeTotal.moderate)}
@@ -133,7 +133,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Path is{" "}
                     <span className="font-semibold text-foreground">
-                      {(pathCumulativeTotal.moderate / year1ImpactTotal.moderate).toFixed(1)}×
+                      {(pathCumulativeTotal.moderate / year1ImpactTotal.moderate).toFixed(1)} times
                     </span>{" "}
                     Year-1 — residual stack compounds
                   </p>
@@ -145,19 +145,19 @@ export function ResultsCard({ result }: ResultsCardProps) {
               {[
                 {
                   label: "Existing-book attach",
-                  hint: "Y1 first-year $ on eligible clients you already have",
+                  hint: "Year-1 first-year dollars on eligible clients you already have",
                   value: existingBookGapTotal.moderate,
                   range: existingBookGapTotal,
                 },
                 {
-                  label: "New pipeline (Y1)",
-                  hint: "Y1 first-year $ on this year’s new clients",
+                  label: "New pipeline (Year 1)",
+                  hint: "Year-1 first-year dollars on this year’s new clients",
                   value: newPipelineYear1Total.moderate,
                   range: newPipelineYear1Total,
                 },
                 {
                   label: "Renewals in path",
-                  hint: `Sum of residual $ across ${horizonYears} years (compounding)`,
+                  hint: `Sum of residual dollars across ${horizonYears} years (compounding)`,
                   value: compoundRenewals,
                   range: null,
                   highlight: true,
@@ -193,7 +193,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 <span className="font-semibold text-foreground tabular-nums">
                   {formatCurrency(lastYear.total)}
                 </span>{" "}
-                ({formatCurrency(lastYear.firstYearProduction)} new +{" "}
+                ({formatCurrency(lastYear.firstYearProduction)} new plus{" "}
                 {formatCurrency(lastYear.renewalProduction)} renewals)
                 {y1Renewals === 0
                   ? " — renewals start building after Year 1 placements persist."
@@ -223,12 +223,12 @@ export function ResultsCard({ result }: ResultsCardProps) {
                         <p className="text-sm font-semibold tabular-nums text-foreground">
                           {formatCurrency(r.year1Impact.moderate)}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">Y1 plan.</p>
+                        <p className="text-[11px] text-muted-foreground">Year-1 planning</p>
                         <p className="text-xs font-medium tabular-nums text-primary">
                           {formatCurrency(r.pathCumulative.moderate)}
                           <span className="font-normal text-muted-foreground">
                             {" "}
-                            / {horizonYears}yr
+                            / {horizonYears} years
                           </span>
                         </p>
                       </div>

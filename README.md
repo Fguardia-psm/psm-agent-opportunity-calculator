@@ -1,6 +1,6 @@
 # PSM Agent Opportunity Calculator
 
-Public calculator for independent insurance agents to estimate **Year-1 commission impact** and **multi-year compounding** (new production + renewals) on product lines they do not currently offer.
+Public calculator for independent insurance agents to estimate **Year-1 commission impact** and **multi-year compounding** (new production and renewals) on product lines they do not currently offer.
 
 ## Markets
 
@@ -8,7 +8,7 @@ Medicare · ACA / Marketplace · Life · Annuity · Ancillary health
 
 ## Stack
 
-- React 19 + TypeScript
+- React 19 and TypeScript
 - TanStack Start / Router
 - Tailwind CSS v4
 - Vite 8
@@ -27,7 +27,7 @@ npm run typecheck
 
 - Results are **illustrative planning estimates**, not guarantees of income.
 - MA defaults reference CMS national FMV structure; other lines use mid-market planning defaults (overrideable in the UI).
-- Do not collect private client / PHI data in this tool.
+- Do not collect private client or PHI data in this tool.
 
 ## Deploy
 

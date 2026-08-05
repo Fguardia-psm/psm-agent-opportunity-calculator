@@ -27,7 +27,7 @@ export function Hero({ onStart }: HeroProps) {
           For any independent agent — Medicare, ACA, life, annuity, ancillary, or mixed. Estimate{" "}
           <span className="font-medium text-foreground">Year-1 impact</span> and the{" "}
           <span className="font-medium text-foreground">compounding multi-year path</span> (new
-          production + renewals) on lines you do not write today that PSM can help you add.
+          production and renewals) on lines you do not write today that PSM can help you add.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -36,14 +36,14 @@ export function Hero({ onStart }: HeroProps) {
             <ArrowRight className="size-4" />
           </Button>
           <p className="text-center text-sm text-muted-foreground sm:text-left">
-            No login. No client data. No obligation. Under 2 minutes.
+            No login. No client data. No obligation. Under two minutes.
           </p>
         </div>
 
         <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Clock, label: "Any primary market" },
-            { icon: LineChart, label: "Year-1 + compounding path" },
+            { icon: LineChart, label: "Year-1 and compounding path" },
             { icon: Lock, label: "No private client data" },
             { icon: ShieldCheck, label: "CMS-aligned MA defaults" },
           ].map(({ icon: Icon, label }) => (

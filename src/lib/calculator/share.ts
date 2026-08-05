@@ -167,13 +167,13 @@ export function buildEstimateSummary(
     `Horizon: ${totals.horizonYears} years`,
     "",
     `Year-1 impact (planning): ${fmt(totals.year1Mod)}  (range ${fmt(totals.year1Low)} – ${fmt(totals.year1High)})`,
-    `${totals.horizonYears}-year path (new + renewals): ${fmt(totals.pathMod)}  (range ${fmt(totals.pathLow)} – ${fmt(totals.pathHigh)})`,
+    `${totals.horizonYears}-year path (new production and renewals): ${fmt(totals.pathMod)}  (range ${fmt(totals.pathLow)} – ${fmt(totals.pathHigh)})`,
     "",
     totals.topLines.length
       ? `Top lines to review: ${totals.topLines.join(", ")}`
-      : "Broad portfolio marked — focus on consistency & reviews.",
+      : "Broad portfolio marked — focus on consistency and reviews.",
     "",
-    "Illustrative only — not a guarantee of income. MA/PDP $ reference CMS FMV structure; other lines are carrier-set planning defaults or your overrides.",
+    "Illustrative only — not a guarantee of income. MA and PDP dollars reference CMS FMV structure; other lines are carrier-set planning defaults or your overrides.",
     "Do not include private client data in any follow-up.",
   ].join("\n");
 }

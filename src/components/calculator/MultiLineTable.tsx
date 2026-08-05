@@ -16,8 +16,9 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
       <CardHeader>
         <CardTitle className="text-lg sm:text-xl">Full product stack</CardTitle>
         <CardDescription>
-          Every line in the PSM opportunity catalog. Year-1 = first-year commission only. Path =
-          multi-year new production + renewals. Planning place rate {attachPct}% on eligible clients.
+          Every line in the PSM opportunity catalog. Year-1 equals first-year commission only. Path
+          equals multi-year new production and renewals. Planning place rate {attachPct}% on eligible
+          clients.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 sm:px-6">
@@ -62,19 +63,19 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">{horizonYears}-yr path</dt>
+                    <dt className="text-muted-foreground">{horizonYears}-year path</dt>
                     <dd className="font-semibold tabular-nums text-foreground">
                       {formatCurrency(line.pathCumulative.moderate)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">1st-yr $ / case</dt>
+                    <dt className="text-muted-foreground">First-year dollars per case</dt>
                     <dd className="tabular-nums">{formatCurrency(line.firstYearRevenue)}</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Est. Y1 cases</dt>
+                    <dt className="text-muted-foreground">Est. Year-1 cases</dt>
                     <dd className="tabular-nums">
-                      {line.isOffered ? "—" : `~${y1Cases.toFixed(1)}`}
+                      {line.isOffered ? "—" : `about ${y1Cases.toFixed(1)}`}
                     </dd>
                   </div>
                 </dl>
@@ -134,7 +135,7 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                       {formatCurrency(line.renewalRevenue)}
                     </td>
                     <td className="px-2 py-3.5 text-right tabular-nums text-muted-foreground">
-                      {line.isOffered ? "—" : `~${y1Cases.toFixed(1)}`}
+                      {line.isOffered ? "—" : y1Cases.toFixed(1)}
                     </td>
                     <td className="px-2 py-3.5 text-right tabular-nums font-medium text-foreground">
                       {line.isOffered ? "—" : formatCurrency(line.year1Impact.moderate)}

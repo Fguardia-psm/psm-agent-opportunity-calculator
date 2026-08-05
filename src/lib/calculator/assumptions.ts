@@ -53,7 +53,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 313,
     eligibility: "medicare",
     compensationSource:
-      "CMS CY2025 national FMV ~$626 initial / ~$313 renewal (½). CT/PA/DC, CA/NJ, and territories differ.",
+      "CMS CY2025 national FMV approximately $626 initial / $313 renewal (one-half). CT/PA/DC, CA/NJ, and territories differ.",
   },
   {
     id: "medicare-supplement",
@@ -63,7 +63,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 55,
     eligibility: "medicare",
     compensationSource:
-      "Carrier-set. Planning default ~$275 first-year / ~$55 renewal per policy (varies widely by plan & contract).",
+      "Carrier-set. Planning default approximately $275 first-year / $55 renewal per policy (varies widely by plan and contract).",
   },
   {
     id: "pdp",
@@ -73,7 +73,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 50,
     eligibility: "medicare",
     compensationSource:
-      "CMS sets PDP FMV (varies by year). Planning default ~$100 initial / ~$50 renewal.",
+      "CMS sets PDP FMV (varies by year). Planning default approximately $100 initial / $50 renewal.",
   },
   {
     id: "aca-marketplace",
@@ -83,7 +83,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 150,
     eligibility: "under65",
     compensationSource:
-      "Carrier- and state-set (often PMPM). Planning default ~$300 first-year / ~$150 ongoing per enrollment.",
+      "Carrier- and state-set (often PMPM). Planning default approximately $300 first-year / $150 ongoing per enrollment.",
   },
   {
     id: "final-expense",
@@ -93,7 +93,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 50,
     eligibility: "broad",
     compensationSource:
-      "Typically ~80–120% of annual premium year 1; renewals ~5–10%. Default assumes ~$600 premium @ ~100% / ~8%.",
+      "Typically about 80–120% of annual premium year 1; renewals about 5–10%. Default assumes about $600 premium at about 100% / about 8%.",
   },
   {
     id: "term-life",
@@ -103,7 +103,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 80,
     eligibility: "broad",
     compensationSource:
-      "Often ~80–100% of year-1 premium. Default assumes ~$1,200–1,500 premium case @ ~90% / modest renewal.",
+      "Often about 80–100% of year-1 premium. Default assumes about $1,200–1,500 premium case at about 90% with a modest renewal.",
   },
   {
     id: "fixed-annuity",
@@ -113,7 +113,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 100,
     eligibility: "broad",
     compensationSource:
-      "Typically a % of premium (often ~2–5% on MYGA/fixed). Default assumes ~$60k premium @ ~3% + modest trail. Override with your schedule.",
+      "Typically a percentage of premium (often about 2–5% on MYGA/fixed). Default assumes about $60k premium at about 3% plus modest trail. Override with your schedule.",
   },
   {
     id: "fixed-indexed-annuity",
@@ -123,7 +123,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 150,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set % of premium (often higher than MYGA, product-specific). Default assumes ~$75k premium mid-single-digit % + optional trail. Override with your schedule.",
+      "Carrier-set percentage of premium (often higher than MYGA, product-specific). Default assumes about $75k premium mid-single-digit percentage plus optional trail. Override with your schedule.",
   },
   {
     id: "hospital-indemnity",
@@ -133,7 +133,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 90,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set. Planning default ~$300 first-year / ~$90 renewal per policy.",
+      "Carrier-set. Planning default approximately $300 first-year / $90 renewal per policy.",
   },
   {
     id: "dental-vision-hearing",
@@ -143,7 +143,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 40,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set (often % of premium). Planning default ~$120 first-year / ~$40 renewal.",
+      "Carrier-set (often a percentage of premium). Planning default approximately $120 first-year / $40 renewal.",
   },
   {
     id: "cancer-heart-stroke",
@@ -153,7 +153,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 60,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set. Planning default ~$200 first-year / ~$60 renewal.",
+      "Carrier-set. Planning default approximately $200 first-year / $60 renewal.",
   },
   {
     id: "short-term-care",
@@ -163,7 +163,7 @@ export const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     renewalRevenue: 90,
     eligibility: "broad",
     compensationSource:
-      "Carrier-set. Planning default ~$350 first-year / ~$90 renewal.",
+      "Carrier-set. Planning default approximately $350 first-year / $90 renewal.",
   },
 ];
 
@@ -244,10 +244,10 @@ export const PRIMARY_CATEGORY_OPTIONS: {
   hint: string;
 }[] = [
   { value: "medicare", label: "Medicare", hint: "MA, Med Supp, PDP" },
-  { value: "aca", label: "ACA / Marketplace", hint: "Individual & family plans" },
-  { value: "life", label: "Life", hint: "Term, final expense, etc." },
+  { value: "aca", label: "ACA / Marketplace", hint: "Individual and family plans" },
+  { value: "life", label: "Life", hint: "Term, final expense, and related" },
   { value: "annuity", label: "Annuity", hint: "Fixed, MYGA, FIA" },
-  { value: "ancillary", label: "Ancillary", hint: "HI, DVH, CI, STC, etc." },
+  { value: "ancillary", label: "Ancillary", hint: "HI, DVH, CI, STC, and related" },
 ];
 
 export const ALL_PRODUCTS: {
@@ -346,36 +346,36 @@ export const FAQ_ITEMS = [
   {
     question: "Who is this calculator for?",
     answer:
-      "Any independent insurance agent — Medicare, ACA, life, annuity, ancillary, or mixed. It estimates what you may leave on the table by not offering lines PSM can help you add, with Year-1 impact and multi-year compounding (new production + renewals/trails).",
+      "Any independent insurance agent — Medicare, ACA, life, annuity, ancillary, or mixed. It estimates what you may leave on the table by not offering lines PSM can help you add, with Year-1 impact and multi-year compounding (new production plus renewals and trails).",
   },
   {
     question: "Is this a guarantee of what I will earn?",
     answer:
-      "No. Figures are planning estimates using published CMS FMV structure for MA/PDP (national defaults) and mid-market illustrations for carrier-set products — or your custom overrides. Actual commissions, renewals, chargebacks, and persistency vary.",
+      "No. Figures are planning estimates using published CMS FMV structure for MA and PDP (national defaults) and mid-market illustrations for carrier-set products — or your custom overrides. Actual commissions, renewals, chargebacks, and persistency vary.",
   },
   {
     question: "How accurate are the dollar amounts?",
     answer:
-      "Medicare Advantage defaults use CMS national Fair Market Value (~$626 initial / ~$313 renewal for CY2025 national). Annuity defaults assume a mid-premium case times a mid-single-digit % of premium (override with your contract). Med Supp, ACA, life, and ancillary defaults are industry mid-points because carriers set those schedules.",
+      "Medicare Advantage defaults use CMS national Fair Market Value (approximately $626 initial / $313 renewal for CY2025 national). Annuity defaults assume a mid-premium case times a mid-single-digit percentage of premium (override with your contract). Med Supp, ACA, life, and ancillary defaults are industry mid-points because carriers set those schedules.",
   },
   {
-    question: "How does Year-1 vs multi-year compounding work?",
+    question: "How does Year-1 versus multi-year compounding work?",
     answer:
-      "Year-1 impact is first-year commission on (1) a one-time place-rate attach on eligible clients you already have, plus (2) new clients that year. Later years add new first-year production and renewal/trail on in-force cases that persist — that residual stack is the compounding effect.",
+      "Year-1 impact is first-year commission on (1) a one-time place-rate attach on eligible clients you already have, plus (2) new clients that year. Later years add new first-year production and renewal or trail on in-force cases that persist — that residual stack is the compounding effect.",
   },
   {
     question: "What client data do I need?",
     answer:
-      "None that is private. Enter approximate active clients/households, new clients per year, and rough % Medicare-age vs under-65. Do not enter names, DOBs, health information, or policy numbers.",
+      "None that is private. Enter approximate active clients or households, new clients per year, and rough percentages for Medicare-age versus under-65. Do not enter names, dates of birth, health information, or policy numbers.",
   },
   {
     question: "Can I use my own commission assumptions?",
     answer:
-      "Yes. After you calculate, open “Use my contract assumptions” to set attach rate, persistency, and per-line first-year / renewal dollars. Results update live.",
+      "Yes. After you calculate, open “Use my contract assumptions” to set attach rate, persistency, and per-line first-year and renewal dollars. Results update live.",
   },
   {
     question: "Can I save or share my estimate?",
     answer:
-      "Yes. Copy a save link, copy a text summary, email yourself, or print/PDF. Links store practice-level inputs only — never private client data.",
+      "Yes. Copy a save link, copy a text summary, email yourself, or print to PDF. Links store practice-level inputs only — never private client data.",
   },
 ] as const;

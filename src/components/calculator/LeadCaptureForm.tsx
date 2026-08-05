@@ -127,7 +127,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         <CardContent className="flex flex-col items-center gap-3 px-6 py-10 text-center">
           <CheckCircle2 className="size-10 text-accent" strokeWidth={1.75} />
           <h3 className="font-display text-xl font-semibold text-foreground">
-            Thanks — we received your request
+            Thank you — we received your request
           </h3>
           <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
             A PSM team member can help with contracting, training, and adding lines outside your
@@ -273,7 +273,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               id="message"
               value={form.message}
               onChange={(e) => set("message")(e.target.value)}
-              placeholder="Lines you’re considering, training needs, market questions…"
+              placeholder="Lines you are considering, training needs, market questions…"
               rows={3}
             />
           </div>

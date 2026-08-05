@@ -39,16 +39,17 @@ export function AssumptionsPanel() {
               <ul className="mt-2 list-disc space-y-1.5 pl-5 text-muted-foreground">
                 <li>
                   <span className="font-medium text-foreground">Eligible clients</span> — Medicare
-                  lines use your Medicare-age %; ACA uses under-65 %; life & most ancillary use full
-                  book (place rate keeps it conservative).
+                  lines use your Medicare-age percentage; ACA uses under-65 percentage; life and most
+                  ancillary lines use the full book (place rate keeps it conservative).
                 </li>
                 <li>
                   <span className="font-medium text-foreground">Year-1 impact</span> — (eligible
                   book × place rate + eligible new × place rate) × first-year commission.
                 </li>
                 <li>
-                  <span className="font-medium text-foreground">Years 2+</span> — new pipeline ×
-                  first-year commission + prior in-force × persistency × renewal commission.
+                  <span className="font-medium text-foreground">Years 2 and beyond</span> — new
+                  pipeline × first-year commission + prior in-force × persistency × renewal
+                  commission.
                 </li>
                 <li>
                   <span className="font-medium text-foreground">Compounding</span> — residual dollars
