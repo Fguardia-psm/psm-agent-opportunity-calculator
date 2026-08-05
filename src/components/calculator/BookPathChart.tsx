@@ -74,11 +74,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar
-                dataKey="First-year production"
-                stackId="a"
-                fill="var(--color-primary)"
-              />
+              <Bar dataKey="First-year production" stackId="a" fill="var(--color-primary)" />
               <Bar
                 dataKey="Renewals (compounding)"
                 stackId="a"

@@ -145,7 +145,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                 }
               }}
               className={cn(
-                "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                "min-h-8 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 i === step
                   ? "bg-primary text-primary-foreground"
                   : i < step
@@ -163,8 +163,8 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
 
       <CardContent className="space-y-6 pt-6">
         {step === 0 && (
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+          <div className="space-y-5">
+            <div className="space-y-2 sm:max-w-md">
               <Label htmlFor="state">State you primarily write in</Label>
               <Select
                 value={inputs.state || undefined}
@@ -188,7 +188,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
 
             <div className="space-y-2">
               <Label>What do you primarily write today? (select all that apply)</Label>
-              <div className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {PRIMARY_CATEGORY_OPTIONS.map((opt) => {
                   const on = inputs.primaryCategories.includes(opt.value);
                   return (
@@ -244,7 +244,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       type="button"
                       onClick={() => onChange({ ...inputs, activeClients: String(n) })}
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        "min-h-8 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                         parseClientCount(inputs.activeClients) === n
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted/50",
@@ -280,7 +280,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       type="button"
                       onClick={() => onChange({ ...inputs, newClientsPerYear: String(n) })}
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        "min-h-8 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                         parseClientCount(inputs.newClientsPerYear) === n
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted/50",

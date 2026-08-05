@@ -47,6 +47,9 @@
 
   html {
     scroll-behavior: smooth;
+    /* Site chrome: Grok banner (optional) + main header (3.5rem / h-14) */
+    --app-header-h: 3.5rem;
+    --app-sticky-offset: calc(var(--grok-banner-h, 0px) + var(--app-header-h));
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -81,6 +84,19 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Anchor targets clear sticky header (and optional results jump bar) */
+  .scroll-offset {
+    scroll-margin-top: calc(var(--app-sticky-offset) + 0.75rem);
+  }
+
+  .scroll-offset-deep {
+    scroll-margin-top: calc(var(--app-sticky-offset) + 3.25rem);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
 }
 
 @utility bg-hero {
@@ -100,50 +116,17 @@
   );
 }
 
-@utility shadow-card {
-  box-shadow: var(--shadow-card);
-}
-
-@utility shadow-elevated {
-  box-shadow: var(--shadow-elevated);
-}
-
-@utility font-display {
-  font-family: var(--font-display);
-}
-
-/* Print / PDF — clean agent one-pager of results */
+/* Print-friendly estimate */
 @media print {
-  @page {
-    margin: 0.6in;
-  }
-
-  body {
-    background: white !important;
-    color: black !important;
-    font-size: 11pt;
-  }
-
   .print\:hidden {
     display: none !important;
   }
 
-  .print\:block {
-    display: block !important;
+  body {
+    background: white;
   }
 
   .print\:break-inside-avoid {
     break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  a {
-    text-decoration: none;
-    color: inherit;
-  }
-
-  /* Flatten cards for ink-friendly print */
-  [class*="shadow"] {
-    box-shadow: none !important;
   }
 }

@@ -4,7 +4,7 @@ export function SeoContent() {
   return (
     <section
       id="how-it-works"
-      className="scroll-mt-24 space-y-6"
+      className="scroll-offset space-y-6"
       aria-labelledby="how-it-works-heading"
     >
       <div>

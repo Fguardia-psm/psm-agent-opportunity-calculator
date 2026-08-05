@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function FaqSection() {
   return (
-    <section id="faq" className="scroll-mt-24" aria-labelledby="faq-heading">
+    <section id="faq" className="scroll-offset" aria-labelledby="faq-heading">
       <h2
         id="faq-heading"
         className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"

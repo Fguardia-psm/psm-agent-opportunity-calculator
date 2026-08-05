@@ -32,15 +32,20 @@ export function ResultsCard({ result }: ResultsCardProps) {
     usedCustomAssumptions,
     categoryRollups,
     moderatePathByYear,
+    missingProducts,
   } = result;
 
-  const y1Renewals = moderatePathByYear[0]?.renewalProduction ?? 0;
   const lastYear = moderatePathByYear[moderatePathByYear.length - 1];
   const compoundRenewals =
     moderatePathByYear.reduce((s, y) => s + y.renewalProduction, 0) || 0;
+  const y1Placed = moderatePathByYear[0]?.newPlaced ?? 0;
+  const y1Renewals = moderatePathByYear[0]?.renewalProduction ?? 0;
 
   return (
-    <Card className="overflow-hidden border-primary/15 bg-result-card shadow-elevated print:break-inside-avoid">
+    <Card
+      id="overview"
+      className="scroll-offset-deep overflow-hidden border-primary/15 bg-result-card shadow-elevated print:break-inside-avoid"
+    >
       <CardHeader className="pb-3">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-accent">
           <TrendingUp className="size-5" strokeWidth={2} />
@@ -60,10 +65,17 @@ export function ResultsCard({ result }: ResultsCardProps) {
         </CardTitle>
         <CardDescription className="text-base">
           Based on {activeClients.toLocaleString()} clients/households and{" "}
-          {newClientsPerYear.toLocaleString()} new / year. Planning place rate{" "}
-          {Math.round(effectiveAttach.moderate * 100)}% · persistency{" "}
-          {Math.round(effectivePersistency.moderate * 100)}%
-          {usedCustomAssumptions ? " (your overrides)" : ""}. Not a guarantee of income.
+          {newClientsPerYear.toLocaleString()} new / year
+          {!hasFullPortfolio && (
+            <>
+              {" "}
+              · {missingProducts.length} open line{missingProducts.length === 1 ? "" : "s"} · planning
+              place rate {Math.round(effectiveAttach.moderate * 100)}% · persistency{" "}
+              {Math.round(effectivePersistency.moderate * 100)}%
+              {usedCustomAssumptions ? " (your overrides)" : ""}
+            </>
+          )}
+          . Not a guarantee of income.
         </CardDescription>
       </CardHeader>
 
@@ -77,7 +89,6 @@ export function ResultsCard({ result }: ResultsCardProps) {
           </div>
         ) : (
           <>
-            {/* Year 1 vs compounding hero pair */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-border/80 bg-surface p-5">
                 <div className="flex items-center gap-2 text-accent">
@@ -87,13 +98,18 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   First-year commission only (book attach + new pipeline)
                 </p>
-                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-foreground">
+                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
                   {formatCurrency(year1ImpactTotal.moderate)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground tabular-nums">
                   Range {formatCurrency(year1ImpactTotal.low)} –{" "}
                   {formatCurrency(year1ImpactTotal.high)}
                 </p>
+                {y1Placed > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    ~{y1Placed.toFixed(1)} illustrative cases placed in Year 1 (planning)
+                  </p>
+                )}
               </div>
 
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
@@ -106,13 +122,22 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   New production each year + renewals on retained in-force
                 </p>
-                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-primary">
+                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-primary sm:text-4xl">
                   {formatCurrency(pathCumulativeTotal.moderate)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground tabular-nums">
                   Range {formatCurrency(pathCumulativeTotal.low)} –{" "}
                   {formatCurrency(pathCumulativeTotal.high)}
                 </p>
+                {pathCumulativeTotal.moderate > 0 && year1ImpactTotal.moderate > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Path is{" "}
+                    <span className="font-semibold text-foreground">
+                      {(pathCumulativeTotal.moderate / year1ImpactTotal.moderate).toFixed(1)}×
+                    </span>{" "}
+                    Year-1 — residual stack compounds
+                  </p>
+                )}
               </div>
             </div>
 
@@ -170,13 +195,18 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 </span>{" "}
                 ({formatCurrency(lastYear.firstYearProduction)} new +{" "}
                 {formatCurrency(lastYear.renewalProduction)} renewals)
-                {y1Renewals === 0 ? " — renewals start building after Year 1 placements persist." : ""}.
+                {y1Renewals === 0
+                  ? " — renewals start building after Year 1 placements persist."
+                  : ""}
+                .
               </p>
             )}
 
             {categoryRollups.length > 0 && (
               <div>
-                <p className="mb-2 text-sm font-medium text-foreground">Open opportunity by category</p>
+                <p className="mb-2 text-sm font-medium text-foreground">
+                  Open opportunity by category
+                </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {categoryRollups.map((r) => (
                     <div
@@ -234,22 +264,37 @@ export function ResultsCard({ result }: ResultsCardProps) {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-surface/70 px-4 py-3">
-          <Layers className="size-4 shrink-0 text-accent" />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Catalog gap score
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Share of PSM catalog lines not yet offered — not a performance rating
-            </p>
+        <div className="rounded-xl border border-border/80 bg-surface/70 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Layers className="size-4 shrink-0 text-accent" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Catalog gap score
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Share of PSM catalog lines not yet offered — not a performance rating
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
+                {portfolioScore}
+                <span className="text-base font-normal text-muted-foreground">/100</span>
+              </p>
+              <p className="text-xs font-medium text-accent">{BAND_LABEL[portfolioBand]}</p>
+            </div>
           </div>
-          <div className="ml-auto text-right">
-            <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
-              {portfolioScore}
-              <span className="text-base font-normal text-muted-foreground">/100</span>
-            </p>
-            <p className="text-xs font-medium text-accent">{BAND_LABEL[portfolioBand]}</p>
+          <div
+            className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuenow={portfolioScore}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Catalog gap score"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{ width: `${Math.min(100, Math.max(0, portfolioScore))}%` }}
+            />
           </div>
         </div>
 

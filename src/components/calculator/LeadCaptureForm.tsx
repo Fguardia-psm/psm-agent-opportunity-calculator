@@ -139,7 +139,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
   }
 
   return (
-    <Card id="lead-form" className="print:hidden">
+    <Card id="lead-form" className="scroll-offset-deep print:hidden">
       <CardHeader>
         <CardTitle className="text-xl sm:text-2xl">Want help from PSM?</CardTitle>
         <CardDescription>
@@ -237,7 +237,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               onValueChange={(v) =>
                 set("contractedWithPsm")(v as FormState["contractedWithPsm"])
               }
-              className="grid grid-cols-3 gap-2"
+              className="grid grid-cols-1 gap-2 sm:grid-cols-3"
             >
               {(
                 [

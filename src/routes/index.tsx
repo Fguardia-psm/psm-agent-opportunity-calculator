@@ -22,6 +22,7 @@ import { DisclaimerFooter } from "@/components/calculator/DisclaimerFooter";
 import { FaqSection } from "@/components/calculator/FaqSection";
 import { SeoContent } from "@/components/calculator/SeoContent";
 import { JsonLd } from "@/components/calculator/JsonLd";
+import { ResultsJumpNav } from "@/components/calculator/ResultsJumpNav";
 import { Button } from "@/components/ui/button";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
@@ -68,7 +69,8 @@ function Home() {
     setResult(next);
     setShowResults(true);
     requestAnimationFrame(() => {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Prefer overview anchor so sticky header never covers the title
+      document.getElementById("overview")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [inputs]);
 
@@ -123,6 +125,11 @@ function Home() {
             <a href="#faq" className="hover:text-foreground">
               FAQ
             </a>
+            {showResults && (
+              <a href="#overview" className="font-medium text-primary hover:text-primary/80">
+                Results
+              </a>
+            )}
           </nav>
           <Button
             size="sm"
@@ -137,6 +144,8 @@ function Home() {
         </div>
       </header>
 
+      {showResults && result && <ResultsJumpNav />}
+
       <div className="print:hidden">
         <Hero
           onStart={() =>
@@ -146,7 +155,7 @@ function Home() {
       </div>
 
       <main className="mx-auto max-w-5xl space-y-14 px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <section ref={calculatorRef} id="calculator" className="scroll-mt-24 print:hidden">
+        <section ref={calculatorRef} id="calculator" className="scroll-offset print:hidden">
           <div className="mb-5 max-w-2xl">
             <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Estimate Year-1 impact & multi-year compounding
@@ -168,7 +177,7 @@ function Home() {
           <section
             ref={resultsRef}
             id="results"
-            className="scroll-mt-24 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="scroll-offset-deep space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
             <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -203,12 +212,22 @@ function Home() {
                 handleInputsChange({ ...inputs, customAssumptions })
               }
             />
-            <BookPathChart result={result} />
-            <ScenarioCompare result={result} />
-            <MultiLineTable result={result} />
+            <div id="path" className="scroll-offset-deep">
+              <BookPathChart result={result} />
+            </div>
+            <div id="scenarios" className="scroll-offset-deep">
+              <ScenarioCompare result={result} />
+            </div>
+            <div id="stack" className="scroll-offset-deep">
+              <MultiLineTable result={result} />
+            </div>
             <OpportunityBreakdown result={result} />
-            <AgentPlaybook result={result} />
-            <ShareActions inputs={inputs} result={result} />
+            <div id="playbook" className="scroll-offset-deep">
+              <AgentPlaybook result={result} />
+            </div>
+            <div id="share" className="scroll-offset-deep">
+              <ShareActions inputs={inputs} result={result} />
+            </div>
             <div className="print:hidden">
               <AssumptionsPanel />
             </div>
