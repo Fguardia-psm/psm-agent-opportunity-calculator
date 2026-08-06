@@ -54,7 +54,13 @@ export const leadInputSchema = z.object({
     .trim()
     .transform((s) => s.toUpperCase())
     .pipe(z.string().length(2)),
-  npn: z.string().trim().max(20).optional().default(""),
+  /** NPN is required — digits only, 5–10 characters after strip */
+  npn: z
+    .string()
+    .trim()
+    .min(1, "NPN is required")
+    .max(15)
+    .regex(/^\d{5,10}$/, "Enter a valid NPN (5–10 digits)"),
   contractedWithPsm: z.enum(["yes", "no", "not-sure"]),
   message: z.string().trim().max(2000).optional().default(""),
   calculatorSnapshot: snapshotSchema,
@@ -90,19 +96,63 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-/** Digits-only phone; require 10–15 digits after stripping. */
+/** Strip to digits only. */
+export function digitsOnly(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
+/**
+ * Format as US tel display while typing: (555) 555-5555
+ * Keeps leading +1 if 11 digits starting with 1.
+ */
+export function formatPhoneInput(raw: string): string {
+  let d = digitsOnly(raw).slice(0, 11);
+  if (d.length === 11 && d.startsWith("1")) {
+    d = d.slice(1);
+  } else {
+    d = d.slice(0, 10);
+  }
+  if (d.length === 0) return "";
+  if (d.length <= 3) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
+/** Valid phone → E.164-ish US storage string or null. */
 export function normalizePhone(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) return null;
-  return trimmed.slice(0, 40);
+  let d = digitsOnly(raw);
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  if (d.length !== 10) return null;
+  // Store as formatted tel for CRM readability
+  return formatPhoneInput(d);
+}
+
+/** NPN: digits only, 5–10 length (NIPR national producer number). */
+export function formatNpnInput(raw: string): string {
+  return digitsOnly(raw).slice(0, 10);
+}
+
+export function normalizeNpn(raw: string): string | null {
+  const d = digitsOnly(raw);
+  if (d.length < 5 || d.length > 10) return null;
+  return d;
+}
+
+/** Names: letters, spaces, hyphens, apostrophes — collapse whitespace. */
+export function formatNameInput(raw: string): string {
+  return raw
+    .replace(/[^\p{L}\p{M}\s'’.\-]/gu, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+}
+
+export function formatEmailInput(raw: string): string {
+  return raw.replace(/\s/g, "").slice(0, 200);
 }
 
 function parseLeadInput(raw: unknown):
   | { ok: true; data: LeadInput }
   | { ok: false; message: string } {
-  // Accept either bare payload or { data: payload } from wrappers
   const candidate =
     raw &&
     typeof raw === "object" &&
@@ -117,11 +167,27 @@ function parseLeadInput(raw: unknown):
     candidate && typeof candidate === "object"
       ? {
           ...(candidate as Record<string, unknown>),
+          firstName:
+            typeof (candidate as { firstName?: unknown }).firstName === "string"
+              ? formatNameInput((candidate as { firstName: string }).firstName).trim()
+              : (candidate as { firstName?: unknown }).firstName,
+          lastName:
+            typeof (candidate as { lastName?: unknown }).lastName === "string"
+              ? formatNameInput((candidate as { lastName: string }).lastName).trim()
+              : (candidate as { lastName?: unknown }).lastName,
+          email:
+            typeof (candidate as { email?: unknown }).email === "string"
+              ? formatEmailInput((candidate as { email: string }).email).toLowerCase()
+              : (candidate as { email?: unknown }).email,
           phone:
             typeof (candidate as { phone?: unknown }).phone === "string"
               ? normalizePhone((candidate as { phone: string }).phone) ??
                 (candidate as { phone: string }).phone
               : (candidate as { phone?: unknown }).phone,
+          npn:
+            typeof (candidate as { npn?: unknown }).npn === "string"
+              ? formatNpnInput((candidate as { npn: string }).npn)
+              : (candidate as { npn?: unknown }).npn,
         }
       : candidate;
 
@@ -134,21 +200,35 @@ function parseLeadInput(raw: unknown):
       ok: false,
       message:
         field === "phone"
-          ? "Enter a valid phone number with at least 10 digits."
+          ? "Enter a valid 10-digit U.S. phone number."
           : field === "email"
             ? "Enter a valid work email."
             : field === "state"
               ? "Select your state."
-              : `Please check ${field}: ${msg}`,
+              : field === "npn"
+                ? "Enter your NPN (5–10 digits, numbers only)."
+                : `Please check ${field}: ${msg}`,
     };
   }
 
   const phone = normalizePhone(parsed.data.phone);
   if (!phone) {
-    return { ok: false, message: "Enter a valid phone number with at least 10 digits." };
+    return { ok: false, message: "Enter a valid 10-digit U.S. phone number." };
+  }
+  const npn = normalizeNpn(parsed.data.npn);
+  if (!npn) {
+    return { ok: false, message: "Enter your NPN (5–10 digits, numbers only)." };
   }
 
-  return { ok: true, data: { ...parsed.data, phone } };
+  return {
+    ok: true,
+    data: {
+      ...parsed.data,
+      phone,
+      npn,
+      email: parsed.data.email.toLowerCase(),
+    },
+  };
 }
 
 /**
@@ -196,7 +276,7 @@ export const submitLead = createServerFn({ method: "POST" })
         email: lead.email.toLowerCase(),
         phone: lead.phone,
         state: lead.state,
-        npn: lead.npn || null,
+        npn: lead.npn,
         contractedWithPsm: lead.contractedWithPsm,
         message: lead.message || null,
         calculatorSnapshot: lead.calculatorSnapshot ?? null,
@@ -309,6 +389,7 @@ export function leadFallbackMailto(data: {
   email: string;
   phone: string;
   state: string;
+  npn?: string;
   message: string;
   summary?: string;
 }): string {
@@ -328,6 +409,7 @@ export function leadFallbackMailto(data: {
       `Email: ${data.email}`,
       `Phone: ${data.phone}`,
       `State: ${data.state}`,
+      data.npn ? `NPN: ${data.npn}` : "",
       data.message ? `Focus: ${data.message}` : "",
       "",
       data.summary || "",

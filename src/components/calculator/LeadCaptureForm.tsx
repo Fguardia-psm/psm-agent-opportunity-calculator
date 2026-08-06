@@ -10,7 +10,16 @@ import type {
   USStateCode,
 } from "@/lib/calculator/types";
 import { formatCurrency } from "@/lib/utils";
-import { leadFallbackMailto, normalizePhone, submitLead } from "@/lib/leads/submit";
+import {
+  formatEmailInput,
+  formatNameInput,
+  formatNpnInput,
+  formatPhoneInput,
+  leadFallbackMailto,
+  normalizeNpn,
+  normalizePhone,
+  submitLead,
+} from "@/lib/leads/submit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,19 +80,28 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
 
   const set =
     <K extends keyof FormState>(key: K) =>
-    (value: FormState[K]) =>
+    (value: FormState[K]) => {
       setForm((f) => ({ ...f, [key]: value }));
+      setErrors((e) => {
+        if (!e[key] && key !== "consent") return e;
+        const next = { ...e };
+        delete next[key];
+        return next;
+      });
+    };
 
   const validate = (): boolean => {
     const next: Partial<Record<keyof FormState | "consent", string>> = {};
     if (!form.firstName.trim()) next.firstName = "First name is required";
     if (!form.lastName.trim()) next.lastName = "Last name is required";
     if (!form.email.trim()) next.email = "Email is required";
-    else if (!isValidEmail(form.email.trim())) next.email = "Enter a valid email";
+    else if (!isValidEmail(form.email.trim())) next.email = "Enter a valid work email";
     if (!form.phone.trim()) next.phone = "Phone is required";
     else if (!normalizePhone(form.phone))
-      next.phone = "Enter a valid 10+ digit phone number";
+      next.phone = "Enter a valid 10-digit U.S. phone number";
     if (!form.state) next.state = "State is required";
+    if (!form.npn.trim()) next.npn = "NPN is required";
+    else if (!normalizeNpn(form.npn)) next.npn = "Enter 5–10 digits (numbers only)";
     if (!form.contractedWithPsm) next.contractedWithPsm = "Please select an option";
     if (!form.consent) next.consent = "Please confirm you are an insurance professional";
     setErrors(next);
@@ -93,10 +111,10 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
   const buildLead = (): LeadSubmission => ({
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
-    email: form.email.trim(),
-    phone: form.phone.trim(),
+    email: form.email.trim().toLowerCase(),
+    phone: normalizePhone(form.phone) || form.phone.trim(),
     state: form.state,
-    npn: form.npn.trim(),
+    npn: normalizeNpn(form.npn) || form.npn.trim(),
     contractedWithPsm: form.contractedWithPsm,
     message: form.message.trim(),
     calculatorSnapshot: result
@@ -126,6 +144,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       email: lead.email,
       phone: lead.phone,
       state: lead.state || "",
+      npn: lead.npn,
       message: lead.message,
       summary: result
         ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
@@ -142,7 +161,6 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     setSubmitting(true);
 
     try {
-      // Prefer unwrapped payload; TanStack Start maps it into the server handler.
       const res = (await submitLead({
         data: {
           firstName: lead.firstName,
@@ -150,7 +168,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           email: lead.email,
           phone: lead.phone,
           state: String(lead.state || "").toUpperCase(),
-          npn: lead.npn || "",
+          npn: lead.npn,
           contractedWithPsm: lead.contractedWithPsm as "yes" | "no" | "not-sure",
           message: lead.message || "",
           website: form.website || "",
@@ -173,7 +191,6 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         },
       })) as Awaited<ReturnType<typeof submitLead>>;
 
-      // Some runtimes wrap as { result: ... }
       const resultBody =
         res && typeof res === "object" && "ok" in res
           ? res
@@ -205,7 +222,6 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       setFallbackMailto(buildMailto(lead));
       toast.error("Online delivery unavailable — use email fallback");
     } catch (err) {
-      // Surface real error text when available (validation/network), not a vague outage claim.
       const detail =
         err instanceof Error && err.message && err.message.length < 180
           ? err.message
@@ -242,6 +258,9 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
   const y1 = result ? formatCurrency(result.year1ImpactTotal.moderate) : null;
   const path = result ? formatCurrency(result.pathCumulativeTotal.moderate) : null;
   const top = result?.topOpportunities.slice(0, 3).map((p) => p.label) ?? [];
+
+  const fieldClass = (key: keyof FormState) =>
+    cn("h-12 text-base", errors[key] && "border-danger focus-visible:ring-danger/40");
 
   return (
     <Card id="lead-form" className="scroll-offset-deep print:hidden border-primary/15">
@@ -283,11 +302,14 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               <Label htmlFor="firstName">First name</Label>
               <Input
                 id="firstName"
+                name="given-name"
                 value={form.firstName}
-                onChange={(e) => set("firstName")(e.target.value)}
+                onChange={(e) => set("firstName")(formatNameInput(e.target.value))}
                 autoComplete="given-name"
+                autoCapitalize="words"
                 maxLength={80}
-                className="h-12 text-base"
+                className={fieldClass("firstName")}
+                placeholder="Jane"
               />
               {errors.firstName && <p className="text-xs text-danger">{errors.firstName}</p>}
             </div>
@@ -295,11 +317,14 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               <Label htmlFor="lastName">Last name</Label>
               <Input
                 id="lastName"
+                name="family-name"
                 value={form.lastName}
-                onChange={(e) => set("lastName")(e.target.value)}
+                onChange={(e) => set("lastName")(formatNameInput(e.target.value))}
                 autoComplete="family-name"
+                autoCapitalize="words"
                 maxLength={80}
-                className="h-12 text-base"
+                className={fieldClass("lastName")}
+                placeholder="Agent"
               />
               {errors.lastName && <p className="text-xs text-danger">{errors.lastName}</p>}
             </div>
@@ -310,12 +335,16 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               <Label htmlFor="email">Work email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                inputMode="email"
                 value={form.email}
-                onChange={(e) => set("email")(e.target.value)}
+                onChange={(e) => set("email")(formatEmailInput(e.target.value))}
+                onBlur={() => set("email")(form.email.trim().toLowerCase())}
                 autoComplete="email"
                 maxLength={200}
-                className="h-12 text-base"
+                className={fieldClass("email")}
+                placeholder="you@agency.com"
               />
               {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
             </div>
@@ -323,12 +352,14 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               <Label htmlFor="phone">Mobile phone</Label>
               <Input
                 id="phone"
+                name="tel"
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
                 value={form.phone}
-                onChange={(e) => set("phone")(e.target.value)}
-                autoComplete="tel"
-                maxLength={40}
-                className="h-12 text-base"
+                onChange={(e) => set("phone")(formatPhoneInput(e.target.value))}
+                maxLength={14}
+                className={cn(fieldClass("phone"), "tabular-nums")}
                 placeholder="(555) 555-5555"
               />
               {errors.phone && <p className="text-xs text-danger">{errors.phone}</p>}
@@ -342,7 +373,10 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.state || undefined}
                 onValueChange={(v) => set("state")(v as USStateCode)}
               >
-                <SelectTrigger id="lead-state" className="h-12">
+                <SelectTrigger
+                  id="lead-state"
+                  className={cn("h-12", errors.state && "border-danger")}
+                >
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -357,16 +391,24 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="npn">
-                NPN <span className="font-normal text-muted-foreground">(optional)</span>
+                NPN <span className="font-normal text-muted-foreground">(required)</span>
               </Label>
               <Input
                 id="npn"
-                value={form.npn}
-                onChange={(e) => set("npn")(e.target.value)}
+                name="npn"
                 inputMode="numeric"
-                maxLength={20}
-                className="h-12 text-base"
+                pattern="[0-9]*"
+                autoComplete="off"
+                value={form.npn}
+                onChange={(e) => set("npn")(formatNpnInput(e.target.value))}
+                maxLength={10}
+                className={cn(fieldClass("npn"), "tabular-nums")}
+                placeholder="1234567"
               />
+              <p className="text-[11px] text-muted-foreground">
+                National Producer Number — numbers only, 5–10 digits
+              </p>
+              {errors.npn && <p className="text-xs text-danger">{errors.npn}</p>}
             </div>
           </div>
 
@@ -393,6 +435,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                     form.contractedWithPsm === value
                       ? "border-primary/40 bg-primary/[0.04]"
                       : "border-border hover:bg-muted/40",
+                    errors.contractedWithPsm && !form.contractedWithPsm && "border-danger/40",
                   )}
                 >
                   <RadioGroupItem value={value} className="sr-only" />
@@ -413,7 +456,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             <Textarea
               id="message"
               value={form.message}
-              onChange={(e) => set("message")(e.target.value)}
+              onChange={(e) => set("message")(e.target.value.slice(0, 2000))}
               placeholder="Example: Medicare add-ons, ACA training, life residual path…"
               rows={3}
               maxLength={2000}
