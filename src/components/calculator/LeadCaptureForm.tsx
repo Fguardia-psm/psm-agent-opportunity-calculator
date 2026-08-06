@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Send } from "lucide-react";
+import { CheckCircle2, Mail, Send } from "lucide-react";
 import { US_STATES } from "@/lib/calculator/assumptions";
 import type {
   CalculationResult,
@@ -8,6 +8,7 @@ import type {
   USStateCode,
 } from "@/lib/calculator/types";
 import { formatCurrency } from "@/lib/utils";
+import { leadFallbackMailto, submitLead } from "@/lib/leads/submit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,10 +39,16 @@ interface FormState {
   npn: string;
   contractedWithPsm: "yes" | "no" | "not-sure" | "";
   message: string;
+  website: string; // honeypot
 }
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
 }
 
 export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormProps) {
@@ -54,9 +61,13 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     npn: "",
     contractedWithPsm: "",
     message: "",
+    website: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [fallbackMailto, setFallbackMailto] = useState<string | null>(null);
 
   const set =
     <K extends keyof FormState>(key: K) =>
@@ -70,56 +81,128 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     if (!form.email.trim()) next.email = "Email is required";
     else if (!isValidEmail(form.email.trim())) next.email = "Enter a valid email";
     if (!form.phone.trim()) next.phone = "Phone is required";
+    else if (!isValidPhone(form.phone)) next.phone = "Enter a valid 10+ digit phone number";
     if (!form.state) next.state = "State is required";
     if (!form.contractedWithPsm) next.contractedWithPsm = "Please select an option";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const buildLead = (): LeadSubmission => ({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    state: form.state,
+    npn: form.npn.trim(),
+    contractedWithPsm: form.contractedWithPsm,
+    message: form.message.trim(),
+    calculatorSnapshot: result
+      ? {
+          activeClients: result.activeClients,
+          newClientsPerYear: result.newClientsPerYear,
+          horizonYears: result.horizonYears,
+          primaryCategories: inputs.primaryCategories,
+          state: form.state,
+          productsOffered: inputs.productsOffered,
+          missingProducts: result.missingProducts,
+          reviewFrequency: inputs.reviewFrequency,
+          helpInterest: inputs.helpInterest || "",
+          year1ImpactTotal: result.year1ImpactTotal,
+          pathCumulativeTotal: result.pathCumulativeTotal,
+          portfolioScore: result.portfolioScore,
+          usedCustomAssumptions: result.usedCustomAssumptions,
+        }
+      : undefined,
+    submittedAt: new Date().toISOString(),
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
+    setFallbackMailto(null);
     if (!validate()) return;
 
-    const lead: LeadSubmission = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      state: form.state,
-      npn: form.npn.trim(),
-      contractedWithPsm: form.contractedWithPsm,
-      message: form.message.trim(),
-      calculatorSnapshot: result
-        ? {
-            activeClients: result.activeClients,
-            newClientsPerYear: result.newClientsPerYear,
-            horizonYears: result.horizonYears,
-            primaryCategories: inputs.primaryCategories,
-            state: form.state,
-            productsOffered: inputs.productsOffered,
-            missingProducts: result.missingProducts,
-            reviewFrequency: inputs.reviewFrequency,
-            helpInterest: inputs.helpInterest || "yes",
-            year1ImpactTotal: result.year1ImpactTotal,
-            pathCumulativeTotal: result.pathCumulativeTotal,
-            portfolioScore: result.portfolioScore,
-            usedCustomAssumptions: result.usedCustomAssumptions,
-          }
-        : undefined,
-      submittedAt: new Date().toISOString(),
-    };
+    const lead = buildLead();
+    setSubmitting(true);
 
     try {
-      const key = "psm-opportunity-leads";
-      const existing = JSON.parse(localStorage.getItem(key) || "[]") as LeadSubmission[];
-      existing.push(lead);
-      localStorage.setItem(key, JSON.stringify(existing));
-    } catch {
-      /* ignore */
-    }
+      const res = await submitLead({
+        data: {
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email,
+          phone: lead.phone,
+          state: lead.state as string,
+          npn: lead.npn,
+          contractedWithPsm: lead.contractedWithPsm as "yes" | "no" | "not-sure",
+          message: lead.message,
+          website: form.website,
+          calculatorSnapshot: lead.calculatorSnapshot
+            ? {
+                activeClients: lead.calculatorSnapshot.activeClients,
+                newClientsPerYear: lead.calculatorSnapshot.newClientsPerYear,
+                horizonYears: lead.calculatorSnapshot.horizonYears as 3 | 5,
+                primaryCategories: lead.calculatorSnapshot.primaryCategories,
+                state: lead.calculatorSnapshot.state,
+                productsOffered: lead.calculatorSnapshot.productsOffered,
+                missingProducts: lead.calculatorSnapshot.missingProducts,
+                reviewFrequency: lead.calculatorSnapshot.reviewFrequency,
+                year1ImpactTotal: lead.calculatorSnapshot.year1ImpactTotal,
+                pathCumulativeTotal: lead.calculatorSnapshot.pathCumulativeTotal,
+                portfolioScore: lead.calculatorSnapshot.portfolioScore,
+                usedCustomAssumptions: lead.calculatorSnapshot.usedCustomAssumptions,
+              }
+            : undefined,
+        },
+      });
 
-    onSubmit(lead);
-    setSubmitted(true);
+      if (res.ok) {
+        try {
+          const key = "psm-opportunity-leads";
+          const existing = JSON.parse(localStorage.getItem(key) || "[]") as LeadSubmission[];
+          existing.push(lead);
+          localStorage.setItem(key, JSON.stringify(existing.slice(-20)));
+        } catch {
+          /* ignore quota */
+        }
+        onSubmit(lead);
+        setSubmitted(true);
+        return;
+      }
+
+      // Honest failure — never claim a teammate will follow up
+      setServerError(res.message);
+      setFallbackMailto(
+        leadFallbackMailto({
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email,
+          phone: lead.phone,
+          state: lead.state || "",
+          message: lead.message,
+          summary: result
+            ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
+            : undefined,
+        }),
+      );
+    } catch {
+      setServerError(
+        "We could not reach the server. Use the email fallback so a PSM teammate still gets your request.",
+      );
+      setFallbackMailto(
+        leadFallbackMailto({
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          state: form.state || "",
+          message: form.message.trim(),
+        }),
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -167,6 +250,18 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/* Honeypot — hidden from real agents */}
+          <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
+            <Label htmlFor="website">Website</Label>
+            <Input
+              id="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={(e) => set("website")(e.target.value)}
+            />
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">First name</Label>
@@ -175,6 +270,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.firstName}
                 onChange={(e) => set("firstName")(e.target.value)}
                 autoComplete="given-name"
+                maxLength={80}
               />
               {errors.firstName && <p className="text-xs text-danger">{errors.firstName}</p>}
             </div>
@@ -185,6 +281,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.lastName}
                 onChange={(e) => set("lastName")(e.target.value)}
                 autoComplete="family-name"
+                maxLength={80}
               />
               {errors.lastName && <p className="text-xs text-danger">{errors.lastName}</p>}
             </div>
@@ -199,6 +296,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.email}
                 onChange={(e) => set("email")(e.target.value)}
                 autoComplete="email"
+                maxLength={200}
               />
               {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
             </div>
@@ -210,6 +308,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.phone}
                 onChange={(e) => set("phone")(e.target.value)}
                 autoComplete="tel"
+                maxLength={30}
               />
               {errors.phone && <p className="text-xs text-danger">{errors.phone}</p>}
             </div>
@@ -244,6 +343,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.npn}
                 onChange={(e) => set("npn")(e.target.value)}
                 inputMode="numeric"
+                maxLength={20}
               />
             </div>
           </div>
@@ -292,15 +392,43 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               id="message"
               value={form.message}
               onChange={(e) => set("message")(e.target.value)}
-              placeholder="Example: annuity appointments, Medicare add-ons, ACA training…"
+              placeholder="Example: Medicare add-ons, ACA training, life residual path…"
               rows={3}
+              maxLength={2000}
             />
           </div>
 
+          <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+            We use your name, work email, phone, state, optional NPN, and calculator estimate only
+            to follow up about PSM contracting and support. Do not submit consumer names, health
+            information, or policy numbers. Local draft copies may stay on this device for your
+            convenience.
+          </p>
+
+          {serverError && (
+            <div className="rounded-xl border border-danger/30 bg-danger/5 px-3.5 py-3 text-sm text-foreground">
+              <p className="font-medium text-danger">Submission not delivered online</p>
+              <p className="mt-1 text-xs text-muted-foreground">{serverError}</p>
+              {fallbackMailto && (
+                <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+                  <a href={fallbackMailto}>
+                    <Mail className="size-3.5" />
+                    Email my request to PSM
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full sm:w-auto"
+              disabled={submitting}
+            >
               <Send className="size-4" />
-              Request my portfolio review
+              {submitting ? "Sending…" : "Request my portfolio review"}
             </Button>
             <p className="text-xs text-muted-foreground">
               We use this to follow up on your estimate — not to sell consumer policies to you.
