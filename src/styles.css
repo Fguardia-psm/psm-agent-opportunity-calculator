@@ -49,7 +49,11 @@
     scroll-behavior: smooth;
     /* Site chrome: Grok banner (optional) + main header (3.5rem / h-14) */
     --app-header-h: 3.5rem;
+    --app-jump-nav-h: 3.25rem;
     --app-sticky-offset: calc(var(--grok-banner-h, 0px) + var(--app-header-h));
+    --app-sticky-with-jump: calc(var(--app-sticky-offset) + var(--app-jump-nav-h));
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -74,6 +78,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: clip;
   }
 
   button:not(:disabled),
@@ -81,28 +88,42 @@
     cursor: pointer;
   }
 
+  /* Avoid iOS zoom on focus — inputs need ≥16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
+
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 
-  /* Anchor targets clear sticky header (and optional results jump bar) */
   .scroll-offset {
     scroll-margin-top: calc(var(--app-sticky-offset) + 0.75rem);
   }
 
+  /* Results sections clear header + jump nav */
   .scroll-offset-deep {
-    scroll-margin-top: calc(var(--app-sticky-offset) + 3.25rem);
+    scroll-margin-top: calc(var(--app-sticky-with-jump) + 0.75rem);
   }
 
   .font-display {
     font-family: var(--font-display);
   }
 
-  /* Accessible skip link focus ring */
   .skip-link:focus {
     position: fixed;
     left: 1rem;
-    top: 1rem;
+    top: max(1rem, env(safe-area-inset-top));
     z-index: 100;
     width: auto;
     height: auto;
@@ -118,7 +139,30 @@
     font-weight: 600;
   }
 
-  /* Print: hide chrome, keep estimate readable */
+  .mobile-sticky-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: -1rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  @media (min-width: 640px) {
+    .mobile-sticky-actions {
+      position: static;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      backdrop-filter: none;
+    }
+  }
+
   @media print {
     body {
       background: white;

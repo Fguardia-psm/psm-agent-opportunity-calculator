@@ -215,7 +215,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
   if (submitted) {
     return (
       <Card className="border-accent/25 bg-accent/[0.04] print:hidden">
-        <CardContent className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <CardContent className="flex flex-col items-center gap-3 px-4 py-10 text-center sm:px-6">
           <CheckCircle2 className="size-10 text-accent" strokeWidth={1.75} />
           <h3 className="font-display text-xl font-semibold text-foreground">
             Request received — a PSM teammate will follow up
@@ -235,11 +235,11 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
 
   return (
     <Card id="lead-form" className="scroll-offset-deep print:hidden border-primary/15">
-      <CardHeader>
-        <CardTitle className="text-xl sm:text-2xl">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="text-xl leading-snug sm:text-2xl">
           Request a portfolio review with PSM
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm leading-relaxed">
           {result && !result.hasFullPortfolio && y1 && path ? (
             <>
               You have seen the math — about {y1} Year-1 planning impact and about {path} over{" "}
@@ -255,7 +255,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
             <Label htmlFor="website">Website</Label>
@@ -277,6 +277,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onChange={(e) => set("firstName")(e.target.value)}
                 autoComplete="given-name"
                 maxLength={80}
+                className="h-12 text-base"
               />
               {errors.firstName && <p className="text-xs text-danger">{errors.firstName}</p>}
             </div>
@@ -288,6 +289,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onChange={(e) => set("lastName")(e.target.value)}
                 autoComplete="family-name"
                 maxLength={80}
+                className="h-12 text-base"
               />
               {errors.lastName && <p className="text-xs text-danger">{errors.lastName}</p>}
             </div>
@@ -303,6 +305,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onChange={(e) => set("email")(e.target.value)}
                 autoComplete="email"
                 maxLength={200}
+                className="h-12 text-base"
               />
               {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
             </div>
@@ -315,6 +318,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onChange={(e) => set("phone")(e.target.value)}
                 autoComplete="tel"
                 maxLength={30}
+                className="h-12 text-base"
               />
               {errors.phone && <p className="text-xs text-danger">{errors.phone}</p>}
             </div>
@@ -327,7 +331,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.state || undefined}
                 onValueChange={(v) => set("state")(v as USStateCode)}
               >
-                <SelectTrigger id="lead-state">
+                <SelectTrigger id="lead-state" className="h-12">
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -350,6 +354,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onChange={(e) => set("npn")(e.target.value)}
                 inputMode="numeric"
                 maxLength={20}
+                className="h-12 text-base"
               />
             </div>
           </div>
@@ -361,7 +366,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               onValueChange={(v) =>
                 set("contractedWithPsm")(v as FormState["contractedWithPsm"])
               }
-              className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+              className="grid grid-cols-1 gap-2"
             >
               {(
                 [
@@ -373,7 +378,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 <label
                   key={value}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 py-2 text-center text-sm font-medium transition-colors",
+                    "flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-center text-sm font-medium transition-colors",
                     form.contractedWithPsm === value
                       ? "border-primary/40 bg-primary/[0.04]"
                       : "border-border hover:bg-muted/40",
@@ -401,21 +406,25 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               placeholder="Example: Medicare add-ons, ACA training, life residual path…"
               rows={3}
               maxLength={2000}
+              className="min-h-[5.5rem] text-base"
             />
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 px-3.5 py-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 px-3.5 py-3.5">
             <Checkbox
               checked={form.consent}
               onCheckedChange={(v) => set("consent")(v === true)}
-              className="mt-0.5"
+              className="mt-0.5 size-5"
               id="agent-consent"
             />
-            <span className="text-xs leading-relaxed text-muted-foreground">
+            <span className="text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
               I am a licensed insurance professional (or agency principal). PSM may contact me about
               contracting and multi-line support using the details above. I will not submit consumer
               PHI or private client data. See{" "}
-              <Link to="/privacy" className="font-medium text-foreground underline-offset-2 hover:underline">
+              <Link
+                to="/privacy"
+                className="font-medium text-foreground underline-offset-2 hover:underline"
+              >
                 Privacy
               </Link>
               .
@@ -428,7 +437,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               <p className="font-medium text-danger">Submission not delivered online</p>
               <p className="mt-1 text-xs text-muted-foreground">{serverError}</p>
               {fallbackMailto && (
-                <Button asChild type="button" variant="outline" size="sm" className="mt-3">
+                <Button asChild type="button" variant="outline" size="sm" className="mt-3 min-h-11">
                   <a href={fallbackMailto}>
                     <Mail className="size-3.5" />
                     Email my request to PSM
@@ -438,17 +447,17 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             </div>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 pt-1">
             <Button
               type="submit"
               size="lg"
-              className="w-full sm:w-auto"
+              className="min-h-12 w-full text-base sm:w-auto"
               disabled={submitting}
             >
               <Send className="size-4" />
               {submitting ? "Sending…" : "Request my portfolio review"}
             </Button>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               We use this to follow up on your estimate — not to sell consumer policies to you.
             </p>
           </div>

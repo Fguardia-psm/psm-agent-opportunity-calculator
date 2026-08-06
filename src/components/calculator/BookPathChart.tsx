@@ -45,21 +45,21 @@ export function BookPathChart({ result }: BookPathChartProps) {
   const attachPct = Math.round(effectiveAttach.moderate * 100);
 
   const annualData = moderatePathByYear.map((y) => ({
-    name: `Year ${y.year}`,
-    "One-time book attach": Math.round(y.bookAttachProduction),
+    name: `Y${y.year}`,
+    "Book attach": Math.round(y.bookAttachProduction),
     "New production": Math.round(y.pipelineProduction),
     Renewals: Math.round(y.renewalProduction),
   }));
 
   const cumData = moderatePathByYear.map((y) => ({
-    name: `Year ${y.year}`,
+    name: `Y${y.year}`,
     Cumulative: Math.round(y.cumulativeTotal),
     "This year": Math.round(y.total),
   }));
 
   // Residual-only series (years 2+) — pure compounding view
   const residualData = moderatePathByYear.map((y) => ({
-    name: `Year ${y.year}`,
+    name: `Y${y.year}`,
     Renewals: Math.round(y.renewalProduction),
     "New production": Math.round(y.pipelineProduction),
     "Annual total": Math.round(y.total),
@@ -104,8 +104,8 @@ export function BookPathChart({ result }: BookPathChartProps) {
 
   return (
     <Card className="print:break-inside-avoid">
-      <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="text-lg leading-snug sm:text-xl">
           Compounding path — Year 1 through {horizonYears}
         </CardTitle>
         <CardDescription>
@@ -114,7 +114,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
           compensation) are the compounding engine after Year 1.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-6 px-4 sm:space-y-8 sm:px-6">
         {/* Residual growth callout */}
         {y2 && last && last.year >= 2 && (
           <div className="grid gap-3 sm:grid-cols-3">
@@ -202,7 +202,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
           <p className="mb-3 text-xs text-muted-foreground">
             Running total of first-year production plus renewals through each year.
           </p>
-          <div className="h-56 w-full sm:h-64">
+          <div className="h-52 w-full touch-pan-y sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cumData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -217,7 +217,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  width={56}
+                  width={48}
                 />
                 <Tooltip
                   formatter={(value: number | string, name: string) => [
@@ -262,7 +262,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
             this line should rise after Year 1 as in-force stacks (Medicare Advantage renewals are
             about half of first-year compensation each retained year).
           </p>
-          <div className="h-56 w-full sm:h-64">
+          <div className="h-52 w-full touch-pan-y sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={residualData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -277,7 +277,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  width={56}
+                  width={48}
                 />
                 <Tooltip
                   formatter={(value: number | string, name: string) => [
@@ -321,7 +321,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
             Year 1 is tall because of one-time attach on clients you already have. That is not
             reverse compounding — it seeds the in-force that pays the residual line above.
           </p>
-          <div className="h-56 w-full sm:h-64">
+          <div className="h-52 w-full touch-pan-y sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={annualData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -336,7 +336,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  width={56}
+                  width={48}
                 />
                 <Tooltip
                   formatter={(value: number | string, name: string) => [
@@ -352,7 +352,7 @@ export function BookPathChart({ result }: BookPathChartProps) {
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar
-                  dataKey="One-time book attach"
+                  dataKey="Book attach"
                   stackId="a"
                   fill="var(--color-primary)"
                   fillOpacity={0.4}

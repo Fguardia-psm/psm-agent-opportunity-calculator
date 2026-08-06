@@ -122,7 +122,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
             </span>
           )}
         </div>
-        <CardTitle className="text-2xl sm:text-3xl">
+        <CardTitle className="text-xl leading-snug sm:text-3xl">
           {hasFullPortfolio
             ? "You marked the full PSM catalog as offered"
             : "What you may leave on the table — Year 1 and over time"}
@@ -162,7 +162,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   First-year commission only — one-time book attach plus new pipeline
                 </p>
-                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-foreground sm:text-4xl">
+                <p className="mt-3 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-foreground sm:text-4xl">
                   {formatCurrency(year1ImpactTotal.moderate)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground tabular-nums">
@@ -185,7 +185,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   Sum of every year — new production plus renewals. This total climbs each year.
                 </p>
-                <p className="mt-3 font-display text-3xl font-semibold tabular-nums text-primary sm:text-4xl">
+                <p className="mt-3 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-primary sm:text-4xl">
                   {formatCurrency(pathCumulativeTotal.moderate)}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground tabular-nums">
@@ -204,7 +204,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2 lg:grid-cols-4">
               {[
                 {
                   label: "Existing-book attach",
@@ -326,7 +326,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3 sm:gap-3">
               {[
                 { label: "Conservative", value: pathCumulativeTotal.low },
                 { label: "Planning", value: pathCumulativeTotal.moderate, highlight: true },
@@ -336,14 +336,14 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   key={item.label}
                   className={
                     item.highlight
-                      ? "rounded-xl border border-primary/25 bg-primary/[0.04] px-3 py-3 text-center"
-                      : "rounded-xl border border-border bg-surface/60 px-3 py-3 text-center"
+                      ? "flex items-center justify-between rounded-xl border border-primary/25 bg-primary/[0.04] px-3.5 py-3 min-[400px]:flex-col min-[400px]:items-center min-[400px]:justify-center min-[400px]:text-center sm:px-3"
+                      : "flex items-center justify-between rounded-xl border border-border bg-surface/60 px-3.5 py-3 min-[400px]:flex-col min-[400px]:items-center min-[400px]:justify-center min-[400px]:text-center sm:px-3"
                   }
                 >
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     {item.label} path
                   </p>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-foreground sm:text-base">
+                  <p className="text-base font-semibold tabular-nums text-foreground min-[400px]:mt-1 sm:text-base">
                     {formatCurrency(item.value)}
                   </p>
                 </div>
@@ -353,7 +353,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
         )}
 
         {/* CTA motivator — dollars + open lines, never a low /100 grade */}
-        <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] px-4 py-4 sm:px-5 sm:py-5 print:hidden">
+        <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] px-3.5 py-4 sm:px-5 sm:py-5 print:hidden">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-center gap-2 text-accent">
@@ -369,7 +369,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 {strength.urgency}
               </p>
               {!hasFullPortfolio && (
-                <ul className="mt-2 flex flex-wrap gap-2 text-xs">
+                <ul className="mt-2 flex flex-wrap gap-1.5 text-xs">
                   <li className="rounded-full border border-border bg-surface px-2.5 py-1 font-medium text-foreground">
                     {openCount} open line{openCount === 1 ? "" : "s"}
                   </li>
@@ -395,7 +395,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
                 in your practice — illustrative only.
               </p>
             </div>
-            <Button type="button" size="lg" className="shrink-0 w-full sm:w-auto" onClick={scrollToLead}>
+            <Button type="button" size="lg" className="min-h-12 w-full shrink-0 text-base sm:w-auto sm:text-sm" onClick={scrollToLead}>
               {strength.cta}
               <ArrowRight className="size-4" />
             </Button>

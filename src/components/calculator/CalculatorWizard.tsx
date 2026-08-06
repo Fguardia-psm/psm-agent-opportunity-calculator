@@ -159,7 +159,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="border-b border-border/80 bg-muted/30">
+      <CardHeader className="border-b border-border/80 bg-muted/30 px-4 py-4 sm:px-6 sm:py-6">
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">
             Step {step + 1} of {WIZARD_STEPS.length}
@@ -167,7 +167,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
           <p className="text-xs text-muted-foreground tabular-nums">{Math.round(progress)}%</p>
         </div>
         <Progress value={progress} className="mb-4 h-1.5" />
-        <div className="mb-1 flex flex-wrap gap-1.5">
+        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {WIZARD_STEPS.map((s, i) => (
             <button
               key={s.id}
@@ -179,7 +179,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                 }
               }}
               className={cn(
-                "min-h-8 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                "inline-flex min-h-10 shrink-0 items-center rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:min-h-9",
                 i === step
                   ? "bg-primary text-primary-foreground"
                   : i < step
@@ -187,15 +187,16 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                     : "bg-muted text-muted-foreground",
               )}
             >
+              <span className="sm:hidden">{i + 1}. </span>
               {s.title}
             </button>
           ))}
         </div>
-        <CardTitle className="text-xl">{current.title}</CardTitle>
-        <CardDescription>{current.description}</CardDescription>
+        <CardTitle className="text-lg sm:text-xl">{current.title}</CardTitle>
+        <CardDescription className="text-sm">{current.description}</CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-6 pt-6">
+      <CardContent className="space-y-6 px-4 pb-4 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
         {step === 0 && (
           <div className="space-y-5">
             <div className="space-y-2 sm:max-w-md">
@@ -204,7 +205,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                 value={inputs.state || undefined}
                 onValueChange={(v) => onChange({ ...inputs, state: v as CalculatorInputs["state"] })}
               >
-                <SelectTrigger id="state" aria-invalid={attempted && !inputs.state}>
+                <SelectTrigger id="state" className="h-12" aria-invalid={attempted && !inputs.state}>
                   <SelectValue placeholder="Select your state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -222,12 +223,12 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
 
             <div className="space-y-2">
               <Label>What do you primarily write today? (select all that apply)</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 We treat those markets as covered. Opportunity is everything else in the catalog
                 (Medicare, ACA, life, and ancillary). Annuity is a primary focus only — it does not
                 appear as a dollar opportunity in results.
               </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2">
                 {PRIMARY_CATEGORY_OPTIONS.map((opt) => {
                   const on = inputs.primaryCategories.includes(opt.value);
                   return (
@@ -236,13 +237,13 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       type="button"
                       onClick={() => toggleCategory(opt.value)}
                       className={cn(
-                        "flex min-h-12 flex-col items-start rounded-xl border px-3.5 py-2.5 text-left transition-colors",
+                        "flex min-h-14 flex-col items-start justify-center rounded-xl border px-3.5 py-3 text-left transition-colors sm:min-h-12 sm:py-2.5",
                         on
                           ? "border-primary/40 bg-primary/[0.04]"
                           : "border-border hover:bg-muted/40",
                       )}
                     >
-                      <span className="text-sm font-medium">{opt.label}</span>
+                      <span className="text-sm font-semibold">{opt.label}</span>
                       <span className="text-xs text-muted-foreground">{opt.hint}</span>
                     </button>
                   );
@@ -257,10 +258,9 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
 
         {step === 1 && (
           <div className="space-y-6">
-            <p className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-border bg-muted/30 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground sm:px-4">
               Use real practice numbers. Eligibility percentages split your book into Medicare-age
-              and under-65 segments so Medicare lines and ACA size to the right pool. The two
-              percentages always total 100%.
+              and under-65 segments. The two percentages always total 100%.
             </p>
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
@@ -283,7 +283,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       type="button"
                       onClick={() => onChange({ ...inputs, activeClients: String(n) })}
                       className={cn(
-                        "min-h-8 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        "inline-flex min-h-10 items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                         parseClientCount(inputs.activeClients) === n
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted/50",
@@ -297,17 +297,14 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="newClientsPerYear">New clients / households per year</Label>
+                <Label htmlFor="newClientsPerYear">New clients / year</Label>
                 <Input
                   id="newClientsPerYear"
                   inputMode="numeric"
-                  placeholder="e.g. 50"
+                  placeholder="e.g. 40"
                   value={inputs.newClientsPerYear}
                   onChange={(e) =>
-                    onChange({
-                      ...inputs,
-                      newClientsPerYear: sanitizeCountInput(e.target.value),
-                    })
+                    onChange({ ...inputs, newClientsPerYear: sanitizeCountInput(e.target.value) })
                   }
                   aria-invalid={Boolean(newError)}
                   className="h-12 text-base tabular-nums"
@@ -319,7 +316,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       type="button"
                       onClick={() => onChange({ ...inputs, newClientsPerYear: String(n) })}
                       className={cn(
-                        "min-h-8 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                        "inline-flex min-h-10 items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                         parseClientCount(inputs.newClientsPerYear) === n
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted/50",
@@ -331,66 +328,49 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                 </div>
                 {newError && <p className="text-xs text-danger">{newError}</p>}
               </div>
+            </div>
 
+            <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="medicareShare">% of book Medicare-age / Medicare-eligible</Label>
+                <Label htmlFor="medicareSharePercent">Medicare-age share of book (%)</Label>
                 <Input
-                  id="medicareShare"
-                  inputMode="decimal"
-                  placeholder="e.g. 40"
-                  value={inputs.medicareSharePercent}
-                  onChange={(e) => setMedicareShare(e.target.value)}
-                  className="h-12 text-base tabular-nums"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Used for MA, Med Supp, and PDP opportunity sizing. Under-65 adjusts so both total
-                  100%.
-                </p>
-                {medError && <p className="text-xs text-danger">{medError}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="under65Share">% of book under 65 / marketplace-eligible</Label>
-                <Input
-                  id="under65Share"
+                  id="medicareSharePercent"
                   inputMode="decimal"
                   placeholder="e.g. 60"
-                  value={inputs.under65SharePercent}
-                  onChange={(e) => setUnder65Share(e.target.value)}
+                  value={inputs.medicareSharePercent}
+                  onChange={(e) => setMedicareShare(e.target.value)}
+                  aria-invalid={Boolean(medError)}
                   className="h-12 text-base tabular-nums"
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Used for ACA / Marketplace opportunity sizing. Medicare-age adjusts so both total
-                  100%.
-                </p>
+                {medError && <p className="text-xs text-danger">{medError}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="under65SharePercent">Under-65 share of book (%)</Label>
+                <Input
+                  id="under65SharePercent"
+                  inputMode="decimal"
+                  placeholder="e.g. 40"
+                  value={inputs.under65SharePercent}
+                  onChange={(e) => setUnder65Share(e.target.value)}
+                  aria-invalid={Boolean(u65Error)}
+                  className="h-12 text-base tabular-nums"
+                />
                 {u65Error && <p className="text-xs text-danger">{u65Error}</p>}
               </div>
             </div>
-
-            {shareSum !== null && (
-              <p
-                className={cn(
-                  "rounded-lg border px-3 py-2 text-xs tabular-nums",
-                  shareSum === 100
-                    ? "border-border bg-muted/30 text-muted-foreground"
-                    : "border-danger/30 bg-danger/5 text-danger",
-                )}
-              >
-                Book split: Medicare-age {medShare}% + under 65 {u65Share}% = {shareSum}%
-                {shareSum === 100 ? " (balanced)" : " — enter a value 0–100 to rebalance"}
+            {shareSum !== null && shareSum !== 100 && (
+              <p className="text-xs text-danger">
+                Shares currently total {shareSum}%. They should total 100% (auto-adjusts when you
+                edit one field).
               </p>
             )}
           </div>
         )}
 
         {step === 2 && (
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label>How often do you review additional product needs with existing clients?</Label>
-              <p className="text-xs text-muted-foreground">
-                Shapes your playbook — not a sales pitch. Agents who review more often usually
-                attach more lines over time.
-              </p>
+              <Label>How often do you review existing clients for additional coverage?</Label>
               <RadioGroup
                 value={inputs.reviewFrequency || undefined}
                 onValueChange={(v) =>
@@ -405,14 +385,14 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                   <label
                     key={opt.value}
                     className={cn(
-                      "flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 transition-colors",
+                      "flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors",
                       inputs.reviewFrequency === opt.value
                         ? "border-primary/40 bg-primary/[0.04]"
                         : "border-border hover:bg-muted/40",
                     )}
                   >
                     <RadioGroupItem value={opt.value} />
-                    <span className="text-sm font-medium">{opt.label}</span>
+                    <span className="text-sm font-medium leading-snug">{opt.label}</span>
                   </label>
                 ))}
               </RadioGroup>
@@ -424,8 +404,8 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
             <div className="space-y-2">
               <Label>Compounding horizon</Label>
               <p className="text-xs text-muted-foreground">
-                How far to project residual renewals and trails on top of new production. Choose 3
-                years for a near-term plan or 5 years for a fuller path.
+                How far to project residual renewals and trails. Choose 3 years for a near-term plan
+                or 5 years for a fuller path.
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {HORIZON_OPTIONS.map((opt) => (
@@ -436,7 +416,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
                       onChange({ ...inputs, horizonYears: opt.value as HorizonYears })
                     }
                     className={cn(
-                      "min-h-14 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+                      "min-h-14 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
                       inputs.horizonYears === opt.value
                         ? "border-primary/40 bg-primary/[0.04] text-primary"
                         : "border-border hover:bg-muted/40",
@@ -450,7 +430,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
           </div>
         )}
 
-        <div className="flex flex-col-reverse gap-3 border-t border-border/80 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mobile-sticky-actions flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:border-t sm:border-border/80 sm:pt-5">
           <Button
             type="button"
             variant="ghost"
@@ -459,14 +439,18 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
               setStep((s) => Math.max(0, s - 1));
             }}
             disabled={step === 0}
-            className="w-full sm:w-auto"
+            className="min-h-12 w-full sm:min-h-11 sm:w-auto"
           >
             <ArrowLeft className="size-4" />
             Back
           </Button>
 
           {step < WIZARD_STEPS.length - 1 ? (
-            <Button type="button" onClick={goNext} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              onClick={goNext}
+              className="min-h-12 w-full text-base sm:min-h-11 sm:w-auto sm:text-sm"
+            >
               Continue
               <ArrowRight className="size-4" />
             </Button>
@@ -476,7 +460,7 @@ export function CalculatorWizard({ inputs, onChange, onCalculate }: CalculatorWi
               variant="accent"
               size="lg"
               onClick={goNext}
-              className="w-full sm:w-auto"
+              className="min-h-12 w-full text-base sm:w-auto"
             >
               <Calculator className="size-4" />
               Show My Opportunity

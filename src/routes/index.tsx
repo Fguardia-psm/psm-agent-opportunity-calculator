@@ -80,6 +80,12 @@ function Home() {
     if (enc) window.history.replaceState(null, "", `?s=${enc}`);
   }, [inputs, showResults]);
 
+  const scrollToResultsTop = () => {
+    requestAnimationFrame(() => {
+      document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   const handleCalculate = useCallback(() => {
     const synced = {
       ...inputs,
@@ -93,8 +99,11 @@ function Home() {
     }
     setResult(next);
     setShowResults(true);
+    // Scroll to results section top (not mid-card) so sticky chrome doesn't hide the header
     requestAnimationFrame(() => {
-      document.getElementById("overview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => {
+        document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
     });
   }, [inputs]);
 
@@ -137,9 +146,9 @@ function Home() {
     <div className="min-h-[calc(100dvh-var(--grok-banner-h,0px))] bg-bg text-foreground">
       <JsonLd />
 
-      <header className="sticky top-[var(--grok-banner-h,0px)] z-40 border-b border-border/80 bg-surface/90 backdrop-blur-md print:hidden">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2.5">
+      <header className="sticky top-[var(--grok-banner-h,0px)] z-40 border-b border-border/80 bg-surface/95 backdrop-blur-md print:hidden">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
             <div
               className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-[11px] font-bold tracking-tight text-primary-foreground"
               aria-hidden
@@ -147,8 +156,10 @@ function Home() {
               PSM
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">PSM Brokerage</p>
-              <p className="truncate text-[11px] text-muted-foreground">
+              <p className="truncate text-sm font-semibold leading-tight text-foreground">
+                PSM Brokerage
+              </p>
+              <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
                 Agent Opportunity Calculator
               </p>
             </div>
@@ -164,7 +175,7 @@ function Home() {
               FAQ
             </a>
             {showResults && (
-              <a href="#overview" className="font-medium text-primary hover:text-primary/80">
+              <a href="#results" className="font-medium text-primary hover:text-primary/80">
                 Results
               </a>
             )}
@@ -172,7 +183,7 @@ function Home() {
           <Button
             size="sm"
             variant="outline"
-            className="shrink-0"
+            className="min-h-10 shrink-0 px-3.5 sm:min-h-9"
             onClick={() =>
               calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
             }
@@ -192,17 +203,19 @@ function Home() {
         />
       </div>
 
-      <main className="mx-auto max-w-5xl space-y-14 px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <main className="mx-auto max-w-5xl space-y-10 px-3 py-8 sm:space-y-14 sm:px-6 sm:py-14 lg:px-8">
         <section ref={calculatorRef} id="calculator" className="scroll-offset print:hidden">
-          <div className="mb-5 max-w-2xl">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <div className="mb-4 max-w-2xl sm:mb-5">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Estimate Year-1 impact and multi-year compounding
             </h2>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
               Tell us your primary markets and book mix. We treat those markets as covered and size
               opportunity on Medicare, ACA, life, and ancillary lines outside them.
             </p>
-            <p className="mt-2 text-xs font-medium text-muted-foreground">{PRIVACY_NOTE}</p>
+            <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
+              {PRIVACY_NOTE}
+            </p>
           </div>
           <CalculatorWizard
             inputs={inputs}
@@ -215,23 +228,34 @@ function Home() {
           <section
             ref={resultsRef}
             id="results"
-            className="scroll-offset-deep space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="scroll-offset-deep space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300 sm:space-y-6"
             aria-label="Your opportunity results"
           >
-            <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="font-display text-2xl font-semibold tracking-tight">Your results</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Change inputs or assumptions anytime — estimates recalculate live.
-                  {result.usedCustomAssumptions && (
-                    <span className="ml-1 font-medium text-accent">Custom assumptions on.</span>
-                  )}
-                </p>
+            <div className="flex flex-col gap-2 print:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
+                    Your results
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Estimates recalculate live when you change inputs.
+                    {result.usedCustomAssumptions && (
+                      <span className="ml-1 font-medium text-accent">Custom assumptions on.</span>
+                    )}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReset}
+                  className="min-h-10 shrink-0 px-3"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span className="hidden min-[360px]:inline">Start over</span>
+                  <span className="min-[360px]:hidden">Reset</span>
+                </Button>
               </div>
-              <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
-                <RefreshCw className="size-4" />
-                Start over
-              </Button>
             </div>
 
             <div className="hidden print:block print:mb-4">
@@ -291,7 +315,7 @@ function Home() {
           </div>
         )}
 
-        <div className="print:hidden space-y-14">
+        <div className="print:hidden space-y-10 sm:space-y-14">
           <SeoContent />
           <FaqSection />
         </div>
