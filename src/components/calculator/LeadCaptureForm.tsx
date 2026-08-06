@@ -10,7 +10,7 @@ import type {
   USStateCode,
 } from "@/lib/calculator/types";
 import { formatCurrency } from "@/lib/utils";
-import { leadFallbackMailto, submitLead } from "@/lib/leads/submit";
+import { leadFallbackMailto, normalizePhone, submitLead } from "@/lib/leads/submit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,11 +50,6 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function isValidPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
-}
-
 export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormProps) {
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -86,7 +81,8 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     if (!form.email.trim()) next.email = "Email is required";
     else if (!isValidEmail(form.email.trim())) next.email = "Enter a valid email";
     if (!form.phone.trim()) next.phone = "Phone is required";
-    else if (!isValidPhone(form.phone)) next.phone = "Enter a valid 10+ digit phone number";
+    else if (!normalizePhone(form.phone))
+      next.phone = "Enter a valid 10+ digit phone number";
     if (!form.state) next.state = "State is required";
     if (!form.contractedWithPsm) next.contractedWithPsm = "Please select an option";
     if (!form.consent) next.consent = "Please confirm you are an insurance professional";
@@ -123,6 +119,19 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     submittedAt: new Date().toISOString(),
   });
 
+  const buildMailto = (lead: LeadSubmission) =>
+    leadFallbackMailto({
+      firstName: lead.firstName,
+      lastName: lead.lastName,
+      email: lead.email,
+      phone: lead.phone,
+      state: lead.state || "",
+      message: lead.message,
+      summary: result
+        ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
+        : undefined,
+    });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
@@ -133,17 +142,18 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     setSubmitting(true);
 
     try {
-      const res = await submitLead({
+      // Prefer unwrapped payload; TanStack Start maps it into the server handler.
+      const res = (await submitLead({
         data: {
           firstName: lead.firstName,
           lastName: lead.lastName,
           email: lead.email,
           phone: lead.phone,
-          state: lead.state as string,
-          npn: lead.npn,
+          state: String(lead.state || "").toUpperCase(),
+          npn: lead.npn || "",
           contractedWithPsm: lead.contractedWithPsm as "yes" | "no" | "not-sure",
-          message: lead.message,
-          website: form.website,
+          message: lead.message || "",
+          website: form.website || "",
           calculatorSnapshot: lead.calculatorSnapshot
             ? {
                 activeClients: lead.calculatorSnapshot.activeClients,
@@ -159,11 +169,19 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 portfolioScore: lead.calculatorSnapshot.portfolioScore,
                 usedCustomAssumptions: lead.calculatorSnapshot.usedCustomAssumptions,
               }
-            : undefined,
+            : null,
         },
-      });
+      })) as Awaited<ReturnType<typeof submitLead>>;
 
-      if (res.ok) {
+      // Some runtimes wrap as { result: ... }
+      const resultBody =
+        res && typeof res === "object" && "ok" in res
+          ? res
+          : res && typeof res === "object" && "result" in (res as object)
+            ? ((res as { result: typeof res }).result as typeof res)
+            : res;
+
+      if (resultBody && typeof resultBody === "object" && "ok" in resultBody && resultBody.ok) {
         try {
           const key = "psm-opportunity-leads";
           const existing = JSON.parse(localStorage.getItem(key) || "[]") as LeadSubmission[];
@@ -178,34 +196,26 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         return;
       }
 
-      setServerError(res.message);
-      const mailto = leadFallbackMailto({
-        firstName: lead.firstName,
-        lastName: lead.lastName,
-        email: lead.email,
-        phone: lead.phone,
-        state: lead.state || "",
-        message: lead.message,
-        summary: result
-          ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
-          : undefined,
-      });
-      setFallbackMailto(mailto);
+      const message =
+        resultBody && typeof resultBody === "object" && "message" in resultBody
+          ? String((resultBody as { message: string }).message)
+          : "We could not deliver your request online. Use the email fallback below.";
+
+      setServerError(message);
+      setFallbackMailto(buildMailto(lead));
       toast.error("Online delivery unavailable — use email fallback");
-    } catch {
+    } catch (err) {
+      // Surface real error text when available (validation/network), not a vague outage claim.
+      const detail =
+        err instanceof Error && err.message && err.message.length < 180
+          ? err.message
+          : null;
       setServerError(
-        "We could not reach the server. Use the email fallback so a PSM teammate still gets your request.",
+        detail
+          ? `Could not submit: ${detail}. Use the email fallback so a PSM teammate still gets your request.`
+          : "We could not complete the online submission. Use the email fallback so a PSM teammate still gets your request.",
       );
-      setFallbackMailto(
-        leadFallbackMailto({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          state: form.state || "",
-          message: form.message.trim(),
-        }),
-      );
+      setFallbackMailto(buildMailto(lead));
       toast.error("Could not submit online");
     } finally {
       setSubmitting(false);
@@ -317,8 +327,9 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.phone}
                 onChange={(e) => set("phone")(e.target.value)}
                 autoComplete="tel"
-                maxLength={30}
+                maxLength={40}
                 className="h-12 text-base"
+                placeholder="(555) 555-5555"
               />
               {errors.phone && <p className="text-xs text-danger">{errors.phone}</p>}
             </div>

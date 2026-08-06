@@ -6,7 +6,9 @@
  *  2. DATABASE_URL — insert into `leads` table (Neon)
  *
  * Never claim success unless delivery is confirmed.
- * Server-only imports stay inside the handler so the client only gets the RPC stub.
+ * This endpoint is intentionally public (no session). Do NOT run
+ * assertSameSiteRequest here — HubSpot embeds and marketing-site posts
+ * are cross-site by design.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -39,19 +41,19 @@ const snapshotSchema = z
     portfolioScore: z.number().finite().min(0).max(100).optional(),
     usedCustomAssumptions: z.boolean().optional(),
   })
-  .optional();
+  .optional()
+  .nullable();
 
 export const leadInputSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
   email: z.string().trim().email().max(200),
-  phone: z
+  phone: z.string().trim().min(7).max(40),
+  state: z
     .string()
     .trim()
-    .min(7)
-    .max(30)
-    .regex(/^[0-9+().\-\s]+$/, "Enter a valid phone number"),
-  state: z.string().trim().min(2).max(2),
+    .transform((s) => s.toUpperCase())
+    .pipe(z.string().length(2)),
   npn: z.string().trim().max(20).optional().default(""),
   contractedWithPsm: z.enum(["yes", "no", "not-sure"]),
   message: z.string().trim().max(2000).optional().default(""),
@@ -72,7 +74,7 @@ export type LeadSubmitResult =
 
 /** In-process rate limit (server process only). */
 const rateBucket = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 8;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function checkRateLimit(email: string): boolean {
@@ -88,94 +90,180 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-export const submitLead = createServerFn({ method: "POST" })
-  .validator((raw: unknown) => leadInputSchema.parse(raw))
-  .handler(async ({ data }): Promise<LeadSubmitResult> => {
-    // Dynamic imports keep Node/server modules out of the client bundle.
-    const { assertSameSiteRequest } = await import("@/lib/auth/isolation.server");
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { createHash, randomUUID } = await import("node:crypto");
+/** Digits-only phone; require 10–15 digits after stripping. */
+export function normalizePhone(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) return null;
+  return trimmed.slice(0, 40);
+}
 
-    try {
-      assertSameSiteRequest();
-    } catch {
-      return {
-        ok: false,
-        code: "forbidden",
-        message: "Request blocked. Please submit from the calculator page.",
-      };
-    }
+function parseLeadInput(raw: unknown):
+  | { ok: true; data: LeadInput }
+  | { ok: false; message: string } {
+  // Accept either bare payload or { data: payload } from wrappers
+  const candidate =
+    raw &&
+    typeof raw === "object" &&
+    "data" in raw &&
+    (raw as { data: unknown }).data &&
+    typeof (raw as { data: unknown }).data === "object" &&
+    !("firstName" in (raw as object))
+      ? (raw as { data: unknown }).data
+      : raw;
 
-    if (data.website && data.website.length > 0) {
-      // Honeypot filled — pretend success, do not store
-      return { ok: true, mode: "webhook", id: "ignored" };
-    }
-
-    if (!checkRateLimit(data.email)) {
-      return {
-        ok: false,
-        code: "rate_limit",
-        message: "Too many requests from this email. Please try again in about 15 minutes.",
-      };
-    }
-
-    const request = getRequest();
-    const id = randomUUID();
-    const xf = request?.headers.get("x-forwarded-for");
-    const ip = xf?.split(",")[0]?.trim() || request?.headers.get("x-real-ip") || null;
-    const ipHash = ip ? createHash("sha256").update(ip).digest("hex").slice(0, 32) : null;
-    const userAgent = request?.headers.get("user-agent")?.slice(0, 300) ?? null;
-
-    const payload = {
-      id,
-      source: "agent-opportunity-calculator",
-      submittedAt: new Date().toISOString(),
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email.toLowerCase(),
-      phone: data.phone,
-      state: data.state,
-      npn: data.npn || null,
-      contractedWithPsm: data.contractedWithPsm,
-      message: data.message || null,
-      calculatorSnapshot: data.calculatorSnapshot ?? null,
-    };
-
-    const webhookUrl = process.env.LEAD_WEBHOOK_URL?.trim();
-    if (webhookUrl) {
-      try {
-        const res = await fetch(webhookUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "user-agent": "psm-agent-opportunity-calculator/1.0",
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (res.ok) {
-          void tryInsertLead(id, data, userAgent, ipHash);
-          return { ok: true, mode: "webhook", id };
+  const pre =
+    candidate && typeof candidate === "object"
+      ? {
+          ...(candidate as Record<string, unknown>),
+          phone:
+            typeof (candidate as { phone?: unknown }).phone === "string"
+              ? normalizePhone((candidate as { phone: string }).phone) ??
+                (candidate as { phone: string }).phone
+              : (candidate as { phone?: unknown }).phone,
         }
-      } catch (err) {
-        console.error(
-          "[leads] webhook failed:",
-          err instanceof Error ? err.message : "error",
-        );
-      }
-    }
+      : candidate;
 
-    const dbOk = await tryInsertLead(id, data, userAgent, ipHash);
-    if (dbOk) {
-      return { ok: true, mode: "database", id };
-    }
-
+  const parsed = leadInputSchema.safeParse(pre);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field = first?.path?.join(".") || "form";
+    const msg = first?.message || "Invalid input";
     return {
       ok: false,
-      code: "not_configured",
       message:
-        "Online delivery is not configured yet. Use the email fallback below so a PSM teammate still receives your request.",
+        field === "phone"
+          ? "Enter a valid phone number with at least 10 digits."
+          : field === "email"
+            ? "Enter a valid work email."
+            : field === "state"
+              ? "Select your state."
+              : `Please check ${field}: ${msg}`,
     };
+  }
+
+  const phone = normalizePhone(parsed.data.phone);
+  if (!phone) {
+    return { ok: false, message: "Enter a valid phone number with at least 10 digits." };
+  }
+
+  return { ok: true, data: { ...parsed.data, phone } };
+}
+
+/**
+ * Pass-through validator so Zod never throws at the framework layer.
+ * We validate inside the handler and return { ok:false } instead.
+ */
+export const submitLead = createServerFn({ method: "POST" })
+  .validator((raw: unknown) => raw)
+  .handler(async ({ data }): Promise<LeadSubmitResult> => {
+    try {
+      const parsed = parseLeadInput(data);
+      if (!parsed.ok) {
+        return { ok: false, code: "validation", message: parsed.message };
+      }
+      const lead = parsed.data;
+
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const { createHash, randomUUID } = await import("node:crypto");
+
+      if (lead.website && lead.website.length > 0) {
+        return { ok: true, mode: "webhook", id: "ignored" };
+      }
+
+      if (!checkRateLimit(lead.email)) {
+        return {
+          ok: false,
+          code: "rate_limit",
+          message: "Too many requests from this email. Please try again in about 15 minutes.",
+        };
+      }
+
+      const request = getRequest();
+      const id = randomUUID();
+      const xf = request?.headers.get("x-forwarded-for");
+      const ip = xf?.split(",")[0]?.trim() || request?.headers.get("x-real-ip") || null;
+      const ipHash = ip ? createHash("sha256").update(ip).digest("hex").slice(0, 32) : null;
+      const userAgent = request?.headers.get("user-agent")?.slice(0, 300) ?? null;
+
+      const payload = {
+        id,
+        source: "agent-opportunity-calculator",
+        submittedAt: new Date().toISOString(),
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email.toLowerCase(),
+        phone: lead.phone,
+        state: lead.state,
+        npn: lead.npn || null,
+        contractedWithPsm: lead.contractedWithPsm,
+        message: lead.message || null,
+        calculatorSnapshot: lead.calculatorSnapshot ?? null,
+      };
+
+      const webhookUrl = process.env.LEAD_WEBHOOK_URL?.trim();
+      let webhookAttempted = false;
+      let webhookFailed = false;
+
+      if (webhookUrl) {
+        webhookAttempted = true;
+        try {
+          const res = await fetch(webhookUrl, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              accept: "application/json",
+              "user-agent": "psm-agent-opportunity-calculator/1.0",
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(12_000),
+          });
+          if (res.ok) {
+            void tryInsertLead(id, lead, userAgent, ipHash);
+            return { ok: true, mode: "webhook", id };
+          }
+          webhookFailed = true;
+          const detail = await res.text().catch(() => "");
+          console.error("[leads] webhook HTTP", res.status, detail.slice(0, 200));
+        } catch (err) {
+          webhookFailed = true;
+          console.error(
+            "[leads] webhook failed:",
+            err instanceof Error ? err.message : "error",
+          );
+        }
+      }
+
+      const dbOk = await tryInsertLead(id, lead, userAgent, ipHash);
+      if (dbOk) {
+        return { ok: true, mode: "database", id };
+      }
+
+      if (webhookAttempted && webhookFailed) {
+        return {
+          ok: false,
+          code: "delivery_failed",
+          message:
+            "We could not deliver your request to the CRM webhook just now. Use the email fallback below so a PSM teammate still receives it.",
+        };
+      }
+
+      return {
+        ok: false,
+        code: "not_configured",
+        message:
+          "Online delivery is not configured yet. Use the email fallback below so a PSM teammate still receives your request.",
+      };
+    } catch (err) {
+      console.error("[leads] unexpected error:", err instanceof Error ? err.message : err);
+      return {
+        ok: false,
+        code: "delivery_failed",
+        message:
+          "Something went wrong submitting your request. Use the email fallback below so a PSM teammate still receives it.",
+      };
+    }
   });
 
 async function tryInsertLead(
