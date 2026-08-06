@@ -2,6 +2,15 @@
 
 Public calculator for independent insurance agents to estimate **Year-1 commission impact** and **multi-year compounding** (new production and renewals) on product lines they do not currently offer.
 
+## Public URLs
+
+| Role | URL |
+|---|---|
+| **Marketing page (HubSpot)** | https://www.psmbrokerage.com/insurance-agent-opportunity-calculator |
+| **App host (Vercel)** | https://psm-agent-opportunity-calculator.vercel.app/ |
+
+The HubSpot page should either **redirect** to Vercel or **embed** the Vercel app (iframe). The app allows framing only from `psmbrokerage.com` / `www.psmbrokerage.com`.
+
 ## Markets
 
 Medicare · ACA / Marketplace · Life · Annuity (primary focus only) · Ancillary health
@@ -32,23 +41,35 @@ Copy `.env.example` and set values in the Vercel project.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `LEAD_WEBHOOK_URL` | **Strongly recommended** | HTTPS endpoint that receives lead JSON (Zapier / Make / CRM / Slack) |
-| `DATABASE_URL` | Optional | Neon Postgres — stores `leads` + auth tables when set |
+| `LEAD_WEBHOOK_URL` | **Strongly recommended** | HTTPS endpoint → Zapier/Make → HubSpot Contacts |
+| `DATABASE_URL` | Optional | Neon Postgres — stores `leads` when set |
 | `VITE_LEAD_FALLBACK_EMAIL` | Optional | Mailto fallback when online delivery is offline |
-| `VITE_PUBLIC_SITE_URL` | Optional | Canonical URL for SEO / JSON-LD |
+| `VITE_PUBLIC_SITE_URL` | Recommended | `https://www.psmbrokerage.com/insurance-agent-opportunity-calculator` |
 | `VITE_AUTH_ENABLED` | Optional | Set `false` for pure public beta (recommended) |
-| `BETTER_AUTH_*` / `GROK_AUTH_*` | Only if auth on | Federated sign-in (not needed for calculator) |
 
-**Beta gate:** Without `LEAD_WEBHOOK_URL` or `DATABASE_URL`, the portfolio-review form will **not** claim success. Agents see an honest error and an email fallback.
+**Beta gate:** Without `LEAD_WEBHOOK_URL` or `DATABASE_URL`, the portfolio-review form will **not** claim success.
 
-## Pages
+## HubSpot website page (go-live)
 
-| Path | Purpose |
-|---|---|
-| `/` | Calculator + results + lead form |
-| `/privacy` | Agent privacy notice |
-| `/disclaimer` | Estimate disclaimer |
-| `/login` | Public notice that sign-in is not required (`noindex`) |
+1. In HubSpot: **Content → Website pages → Create**
+2. Page URL slug: `insurance-agent-opportunity-calculator`
+3. **Option A — Redirect (simplest SEO):** page module or host redirect to  
+   `https://psm-agent-opportunity-calculator.vercel.app/`
+4. **Option B — Embed:** full-width HTML module:
+
+```html
+<iframe
+  src="https://psm-agent-opportunity-calculator.vercel.app/"
+  title="PSM Agent Opportunity Calculator"
+  style="width:100%;min-height:90vh;border:0;display:block;"
+  loading="lazy"
+  referrerpolicy="strict-origin-when-cross-origin"
+></iframe>
+```
+
+5. Publish the page  
+6. Set Vercel env `VITE_PUBLIC_SITE_URL` to the HubSpot URL and redeploy  
+7. Wire `LEAD_WEBHOOK_URL` to Zapier → HubSpot Create Contact
 
 ## Lead payload (webhook)
 
@@ -63,4 +84,4 @@ Copy `.env.example` and set values in the Vercel project.
 
 ## Deploy
 
-Configured for Vercel via Nitro (`nitro({ preset: "vercel" })` on build). Set `LEAD_WEBHOOK_URL` (and/or `DATABASE_URL`) before inviting external agents.
+Configured for Vercel via Nitro (`nitro({ preset: "vercel" })` on build).

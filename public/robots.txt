@@ -3,4 +3,4 @@ Allow: /
 Disallow: /login
 Disallow: /api/
 
-Sitemap: https://psm-agent-opportunity-calculator.vercel.app/sitemap.xml
+Sitemap: https://www.psmbrokerage.com/insurance-agent-opportunity-calculator

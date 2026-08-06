@@ -113,11 +113,13 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+// Allow HubSpot marketing site to embed the calculator; block other sites.
+const FRAME_ANCESTORS =
+  "frame-ancestors 'self' https://www.psmbrokerage.com https://psmbrokerage.com";
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // Keep `nitro` gated to `build` (the Vercel deploy target): enabled in dev it
 // opens a second dev-server port, which breaks the single-port preview.
-// The dev server starts once `src/router.tsx` and `src/routes/` exist — see
-// AGENTS.md § "First scaffold".
 export default defineConfig(({ command }) => ({
   server: {
     host: "0.0.0.0",
@@ -139,7 +141,8 @@ export default defineConfig(({ command }) => ({
               "/**": {
                 headers: {
                   "X-Content-Type-Options": "nosniff",
-                  "X-Frame-Options": "SAMEORIGIN",
+                  // Prefer CSP frame-ancestors over X-Frame-Options so HubSpot can embed
+                  "Content-Security-Policy": FRAME_ANCESTORS,
                   "Referrer-Policy": "strict-origin-when-cross-origin",
                   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
                 },

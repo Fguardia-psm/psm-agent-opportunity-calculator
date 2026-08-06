@@ -1,10 +1,19 @@
 import { FAQ_ITEMS } from "@/lib/calculator/assumptions";
 
+const DEFAULT_SITE =
+  "https://www.psmbrokerage.com/insurance-agent-opportunity-calculator";
+
 export function JsonLd() {
   const siteUrl =
     (typeof import.meta !== "undefined" &&
       (import.meta as ImportMeta & { env?: Record<string, string> }).env
         ?.VITE_PUBLIC_SITE_URL) ||
+    DEFAULT_SITE;
+
+  const appOrigin =
+    (typeof import.meta !== "undefined" &&
+      (import.meta as ImportMeta & { env?: Record<string, string> }).env
+        ?.VITE_APP_ORIGIN) ||
     "https://psm-agent-opportunity-calculator.vercel.app";
 
   const faqLd = {
@@ -37,12 +46,13 @@ export function JsonLd() {
     provider: {
       "@type": "Organization",
       name: "PSM Brokerage",
-      url: siteUrl,
+      url: "https://www.psmbrokerage.com",
     },
     audience: {
       "@type": "Audience",
       audienceType: "Independent insurance agents",
     },
+    sameAs: [appOrigin],
   };
 
   const orgLd = {
@@ -51,7 +61,7 @@ export function JsonLd() {
     name: "PSM Brokerage",
     description:
       "Independent agent support for Medicare, ACA, life, annuity, and ancillary product lines.",
-    url: siteUrl,
+    url: "https://www.psmbrokerage.com",
   };
 
   return (
