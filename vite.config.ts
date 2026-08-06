@@ -51,15 +51,9 @@ function authPopupPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         try {
           const rawUrl = req.url ?? "";
-          const pathOnly = rawUrl.split("?", 1)[0] ?? "";
+          const pathOnly = rawUrl.split("?")[0] ?? "";
           if (pathOnly !== "/auth/popup") {
             next();
-            return;
-          }
-          if ((req.method ?? "GET").toUpperCase() !== "GET") {
-            res.statusCode = 405;
-            res.setHeader("content-type", "text/plain; charset=utf-8");
-            res.end("Method Not Allowed");
             return;
           }
 
@@ -137,7 +131,23 @@ export default defineConfig(({ command }) => ({
     authPopupPlugin(),
     tailwindcss(),
     tanstackStart(),
-    ...(command === "build" ? [nitro({ preset: "vercel" })] : []),
+    ...(command === "build"
+      ? [
+          nitro({
+            preset: "vercel",
+            routeRules: {
+              "/**": {
+                headers: {
+                  "X-Content-Type-Options": "nosniff",
+                  "X-Frame-Options": "SAMEORIGIN",
+                  "Referrer-Policy": "strict-origin-when-cross-origin",
+                  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+                },
+              },
+            },
+          }),
+        ]
+      : []),
     viteReact(),
   ],
 }));

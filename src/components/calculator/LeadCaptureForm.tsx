@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Mail, Send } from "lucide-react";
+import { toast } from "sonner";
 import { US_STATES } from "@/lib/calculator/assumptions";
 import type {
   CalculationResult,
@@ -22,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 interface LeadCaptureFormProps {
@@ -39,7 +42,8 @@ interface FormState {
   npn: string;
   contractedWithPsm: "yes" | "no" | "not-sure" | "";
   message: string;
-  website: string; // honeypot
+  website: string;
+  consent: boolean;
 }
 
 function isValidEmail(email: string) {
@@ -62,8 +66,9 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     contractedWithPsm: "",
     message: "",
     website: "",
+    consent: false,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState | "consent", string>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -75,7 +80,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       setForm((f) => ({ ...f, [key]: value }));
 
   const validate = (): boolean => {
-    const next: Partial<Record<keyof FormState, string>> = {};
+    const next: Partial<Record<keyof FormState | "consent", string>> = {};
     if (!form.firstName.trim()) next.firstName = "First name is required";
     if (!form.lastName.trim()) next.lastName = "Last name is required";
     if (!form.email.trim()) next.email = "Email is required";
@@ -84,6 +89,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     else if (!isValidPhone(form.phone)) next.phone = "Enter a valid 10+ digit phone number";
     if (!form.state) next.state = "State is required";
     if (!form.contractedWithPsm) next.contractedWithPsm = "Please select an option";
+    if (!form.consent) next.consent = "Please confirm you are an insurance professional";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -168,24 +174,24 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         }
         onSubmit(lead);
         setSubmitted(true);
+        toast.success("Request delivered to PSM");
         return;
       }
 
-      // Honest failure — never claim a teammate will follow up
       setServerError(res.message);
-      setFallbackMailto(
-        leadFallbackMailto({
-          firstName: lead.firstName,
-          lastName: lead.lastName,
-          email: lead.email,
-          phone: lead.phone,
-          state: lead.state || "",
-          message: lead.message,
-          summary: result
-            ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
-            : undefined,
-        }),
-      );
+      const mailto = leadFallbackMailto({
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email,
+        phone: lead.phone,
+        state: lead.state || "",
+        message: lead.message,
+        summary: result
+          ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
+          : undefined,
+      });
+      setFallbackMailto(mailto);
+      toast.error("Online delivery unavailable — use email fallback");
     } catch {
       setServerError(
         "We could not reach the server. Use the email fallback so a PSM teammate still gets your request.",
@@ -200,6 +206,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           message: form.message.trim(),
         }),
       );
+      toast.error("Could not submit online");
     } finally {
       setSubmitting(false);
     }
@@ -250,7 +257,6 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          {/* Honeypot — hidden from real agents */}
           <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
             <Label htmlFor="website">Website</Label>
             <Input
@@ -398,12 +404,24 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             />
           </div>
 
-          <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-            We use your name, work email, phone, state, optional NPN, and calculator estimate only
-            to follow up about PSM contracting and support. Do not submit consumer names, health
-            information, or policy numbers. Local draft copies may stay on this device for your
-            convenience.
-          </p>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 px-3.5 py-3">
+            <Checkbox
+              checked={form.consent}
+              onCheckedChange={(v) => set("consent")(v === true)}
+              className="mt-0.5"
+              id="agent-consent"
+            />
+            <span className="text-xs leading-relaxed text-muted-foreground">
+              I am a licensed insurance professional (or agency principal). PSM may contact me about
+              contracting and multi-line support using the details above. I will not submit consumer
+              PHI or private client data. See{" "}
+              <Link to="/privacy" className="font-medium text-foreground underline-offset-2 hover:underline">
+                Privacy
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.consent && <p className="text-xs text-danger">{errors.consent}</p>}
 
           {serverError && (
             <div className="rounded-xl border border-danger/30 bg-danger/5 px-3.5 py-3 text-sm text-foreground">

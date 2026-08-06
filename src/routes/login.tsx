@@ -1,40 +1,45 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const Route = createFileRoute("/login")({ component: Login });
+/**
+ * Auth is not required for the public Opportunity Calculator.
+ * Keep a minimal route so platform auth scaffolding does not 404,
+ * but steer agents back to the product. robots: noindex.
+ */
+export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: "Sign in not required | PSM Agent Opportunity Calculator" },
+      { name: "robots", content: "noindex, nofollow" },
+      {
+        name: "description",
+        content: "The PSM Agent Opportunity Calculator is public. No sign-in is required.",
+      },
+    ],
+  }),
+  component: Login,
+});
 
 function Login() {
   return (
     <main className="grid min-h-[calc(100dvh-var(--grok-banner-h,0px))] place-items-center bg-bg px-4 py-10">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
+          <CardTitle>No sign-in required</CardTitle>
           <CardDescription>
-            The Opportunity Calculator is public — sign-in is optional for agent tools that may
-            need an account later.
+            The Agent Opportunity Calculator is a public tool for independent agents. You do not
+            need an account to estimate Year-1 impact, multi-year compounding, or request a PSM
+            portfolio review.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {authEnabled ? (
-            GROK_PROVIDERS.map((p) => (
-              <Button
-                key={p.providerId}
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => signIn(p.providerId, { callbackURL: "/" })}
-              >
-                Continue with {p.label}
-              </Button>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground">Sign-in is disabled.</p>
-          )}
-          <Button asChild variant="ghost" className="w-full">
-            <Link to="/">Back to calculator</Link>
+          <Button asChild className="w-full" size="lg">
+            <Link to="/">Go to the calculator</Link>
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Optional platform sign-in is not part of this beta experience.
+          </p>
         </CardContent>
       </Card>
     </main>

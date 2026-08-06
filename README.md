@@ -13,8 +13,8 @@ Medicare · ACA / Marketplace · Life · Annuity (primary focus only) · Ancilla
 - Tailwind CSS v4
 - Vite 8
 - Nitro (Vercel preset) for production
-- Optional Postgres (Neon) via `DATABASE_URL` for lead storage / Better Auth
-- Optional Better Auth (Grok broker) — calculator itself is public (no login required)
+- Optional Postgres (Neon) via `DATABASE_URL` for lead storage
+- Optional Better Auth (not required for the public calculator)
 
 ## Scripts
 
@@ -28,17 +28,27 @@ npm run test:math   # calculator integrity checks
 
 ## Environment (production)
 
+Copy `.env.example` and set values in the Vercel project.
+
 | Variable | Required | Purpose |
 |---|---|---|
-| `LEAD_WEBHOOK_URL` | **Strongly recommended for beta** | HTTPS endpoint that receives lead JSON (Zapier / Make / CRM / Slack) |
+| `LEAD_WEBHOOK_URL` | **Strongly recommended** | HTTPS endpoint that receives lead JSON (Zapier / Make / CRM / Slack) |
 | `DATABASE_URL` | Optional | Neon Postgres — stores `leads` + auth tables when set |
-| `VITE_LEAD_FALLBACK_EMAIL` | Optional | Mailto fallback address when online delivery is not configured (default `agents@psmbrokerage.com`) |
-| `BETTER_AUTH_URL` | If auth on | Public site origin for Better Auth |
-| `BETTER_AUTH_SECRET` | If auth on | Session signing secret |
-| `GROK_AUTH_CLIENT_ID` / `GROK_AUTH_CLIENT_SECRET` | If auth on | Federated sign-in (not needed for public calculator) |
-| `VITE_AUTH_ENABLED` | Optional | Set `false` to disable auth UI |
+| `VITE_LEAD_FALLBACK_EMAIL` | Optional | Mailto fallback when online delivery is offline |
+| `VITE_PUBLIC_SITE_URL` | Optional | Canonical URL for SEO / JSON-LD |
+| `VITE_AUTH_ENABLED` | Optional | Set `false` for pure public beta (recommended) |
+| `BETTER_AUTH_*` / `GROK_AUTH_*` | Only if auth on | Federated sign-in (not needed for calculator) |
 
 **Beta gate:** Without `LEAD_WEBHOOK_URL` or `DATABASE_URL`, the portfolio-review form will **not** claim success. Agents see an honest error and an email fallback.
+
+## Pages
+
+| Path | Purpose |
+|---|---|
+| `/` | Calculator + results + lead form |
+| `/privacy` | Agent privacy notice |
+| `/disclaimer` | Estimate disclaimer |
+| `/login` | Public notice that sign-in is not required (`noindex`) |
 
 ## Lead payload (webhook)
 
@@ -49,7 +59,7 @@ npm run test:math   # calculator integrity checks
 - Results are **illustrative planning estimates**, not guarantees of income.
 - MA defaults reference CMS national FMV structure; other lines use mid-market planning defaults (overrideable in the UI).
 - Do not collect private client or PHI data in this tool.
-- Lead form is for **agent** contact info only.
+- Lead form is for **agent** contact info only, with explicit professional consent.
 
 ## Deploy
 

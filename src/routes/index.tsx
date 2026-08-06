@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { calculateOpportunity, canCalculate } from "@/lib/calculator/calculate";
 import { defaultInputs } from "@/lib/calculator/defaults";
 import { productsFromPrimaryCategories } from "@/lib/calculator/assumptions";
@@ -28,7 +29,17 @@ import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      {
+        title:
+          "Insurance Agent Opportunity Calculator | Year-1 and Compounding | PSM Brokerage",
+      },
+    ],
+  }),
+  component: Home,
+});
 
 function Home() {
   const [inputs, setInputs] = useState<CalculatorInputs>(() => defaultInputs());
@@ -48,7 +59,6 @@ function Home() {
     }
     const decoded = decodeInputs(param);
     if (decoded) {
-      // Always derive offered products from primary markets
       const synced = {
         ...decoded,
         productsOffered: productsFromPrimaryCategories(decoded.primaryCategories),
@@ -77,7 +87,10 @@ function Home() {
     };
     setInputs(synced);
     const next = calculateOpportunity(synced);
-    if (!next) return;
+    if (!next) {
+      toast.error("Complete all steps to see your estimate");
+      return;
+    }
     setResult(next);
     setShowResults(true);
     requestAnimationFrame(() => {
@@ -110,7 +123,11 @@ function Home() {
 
   if (!restored) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center bg-bg text-sm text-muted-foreground">
+      <div
+        className="flex min-h-[40vh] items-center justify-center bg-bg text-sm text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
         Loading calculator…
       </div>
     );
@@ -123,7 +140,10 @@ function Home() {
       <header className="sticky top-[var(--grok-banner-h,0px)] z-40 border-b border-border/80 bg-surface/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-[11px] font-bold tracking-tight text-primary-foreground">
+            <div
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-[11px] font-bold tracking-tight text-primary-foreground"
+              aria-hidden
+            >
               PSM
             </div>
             <div className="min-w-0">
@@ -133,7 +153,10 @@ function Home() {
               </p>
             </div>
           </div>
-          <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
+          <nav
+            className="hidden items-center gap-4 text-sm text-muted-foreground md:flex"
+            aria-label="Page"
+          >
             <a href="#how-it-works" className="hover:text-foreground">
               How it works
             </a>
@@ -193,6 +216,7 @@ function Home() {
             ref={resultsRef}
             id="results"
             className="scroll-offset-deep space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            aria-label="Your opportunity results"
           >
             <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -253,7 +277,11 @@ function Home() {
               result={result}
               onSubmit={(lead) => setLeads((prev) => [...prev, lead])}
             />
-            <span className="sr-only">{leads.length} lead submissions stored locally</span>
+            <span className="sr-only" aria-live="polite">
+              {leads.length > 0
+                ? `${leads.length} portfolio review request${leads.length === 1 ? "" : "s"} submitted this session`
+                : ""}
+            </span>
           </section>
         )}
 

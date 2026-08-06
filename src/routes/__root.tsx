@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
 import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import appCss from "../styles.css?url";
@@ -9,6 +10,7 @@ const DESCRIPTION =
   "Free calculator for any independent insurance agent. Estimate Year-1 commission impact and multi-year compounding on Medicare, ACA, life, annuity, and ancillary lines you do not offer. CMS-aligned MA defaults. No login, no client data.";
 
 const host = import.meta.env.VITE_PUBLIC_HOSTNAME;
+const siteUrl = import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined;
 const ogImage = host
   ? `https://og.grok.me/v1/card.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent("Agent Opportunity Calculator")}`
   : undefined;
@@ -26,10 +28,13 @@ export const Route = createRootRoute({
       },
       { name: "robots", content: "index, follow" },
       { name: "author", content: "PSM Brokerage" },
+      { name: "theme-color", content: "#0b3a5c" },
       { title: APP_NAME },
       { property: "og:type", content: "website" },
       { property: "og:title", content: APP_NAME },
       { property: "og:description", content: DESCRIPTION },
+      { property: "og:site_name", content: "PSM Brokerage" },
+      ...(siteUrl ? [{ property: "og:url", content: siteUrl }] : []),
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: APP_NAME },
       { name: "twitter:description", content: DESCRIPTION },
@@ -44,6 +49,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      ...(siteUrl ? [{ rel: "canonical", href: siteUrl }] : []),
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -62,10 +68,19 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
+        <a href="#calculator" className="sr-only skip-link">
+          Skip to calculator
+        </a>
         <CreatedWithGrokBanner />
         <AuthProvider>
           <Outlet />
         </AuthProvider>
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{ className: "font-sans" }}
+        />
         <Scripts />
       </body>
     </html>

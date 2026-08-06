@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { DISCLAIMER_TEXT, PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
 export function DisclaimerFooter() {
@@ -25,6 +26,12 @@ export function DisclaimerFooter() {
           <a href="#lead-form" className="hover:text-foreground">
             Contact PSM
           </a>
+          <Link to="/privacy" className="hover:text-foreground">
+            Privacy
+          </Link>
+          <Link to="/disclaimer" className="hover:text-foreground">
+            Disclaimer
+          </Link>
         </nav>
         <p className="text-[11px] text-muted-foreground/80">
           © {new Date().getFullYear()} PSM Brokerage. Illustrative tool only — not an offer of

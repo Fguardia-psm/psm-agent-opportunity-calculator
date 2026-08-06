@@ -97,36 +97,32 @@
   .font-display {
     font-family: var(--font-display);
   }
-}
 
-@utility bg-hero {
-  background-color: color-mix(in oklab, var(--color-bg) 70%, white);
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--color-primary) 4%, white) 0%,
-    var(--color-bg) 100%
-  );
-}
-
-@utility bg-result-card {
-  background-image: linear-gradient(
-    165deg,
-    color-mix(in oklab, var(--color-primary) 5%, white) 0%,
-    var(--color-surface) 55%
-  );
-}
-
-/* Print-friendly estimate */
-@media print {
-  .print\:hidden {
-    display: none !important;
+  /* Accessible skip link focus ring */
+  .skip-link:focus {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 100;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    border-radius: var(--radius-lg);
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
-  body {
-    background: white;
-  }
-
-  .print\:break-inside-avoid {
-    break-inside: avoid;
+  /* Print: hide chrome, keep estimate readable */
+  @media print {
+    body {
+      background: white;
+      color: black;
+    }
   }
 }

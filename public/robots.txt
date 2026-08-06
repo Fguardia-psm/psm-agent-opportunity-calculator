@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /api/
+
+Sitemap: https://psm-agent-opportunity-calculator.vercel.app/sitemap.xml
