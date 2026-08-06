@@ -75,11 +75,12 @@ function PrivacyPage() {
               <CardTitle className="text-base">Information you may choose to share</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>If you request a portfolio review, you may provide:</p>
+              <p>If you request a portfolio review, you provide:</p>
               <ul className="list-disc space-y-1 pl-5">
                 <li>Name, work email, and mobile phone</li>
-                <li>Licensed state and optional NPN</li>
+                <li>Licensed state and National Producer Number (NPN)</li>
                 <li>Whether you are already contracted with PSM</li>
+                <li>Confirmation that you are a licensed insurance professional</li>
                 <li>Optional free-text about what you want help with</li>
                 <li>
                   An illustrative calculator snapshot (practice counts, open lines, estimated
@@ -104,8 +105,11 @@ function PrivacyPage() {
                 estimate. Do not put private client data into those inputs.
               </p>
               <p>
-                A local copy of successful submissions may remain in your browser storage on this
-                device for your convenience. You can clear site data in your browser to remove it.
+                After a successful online submission, this browser may keep a{" "}
+                <span className="font-medium text-foreground">non-identifying receipt</span> (submission
+                id and time only). Email, phone, and NPN are{" "}
+                <span className="font-medium text-foreground">not</span> stored in browser storage.
+                Clear site data anytime to remove receipts.
               </p>
             </CardContent>
           </Card>
@@ -134,21 +138,36 @@ function PrivacyPage() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Hosting may run on infrastructure providers (for example Vercel and a managed
-                Postgres provider when database delivery is enabled). Webhook destinations you
-                configure (CRM, automation tools) receive only the lead payload you submit.
+                Hosting, analytics, and CRM tools used by PSM may process submission data under PSM’s
+                instruction. Do not submit consumer PHI through this form.
               </p>
               <p>
-                No payment card data is collected. Sign-in is optional and not required to use the
-                calculator.
+                Technical controls include server-side validation, professional consent required on
+                the server, origin checks on the public form endpoint, and rate limiting (best-effort
+                on serverless infrastructure). No control is perfect against determined abuse.
               </p>
             </CardContent>
           </Card>
 
-          <p className="text-xs">
-            This notice describes the calculator experience. It is not legal advice. PSM may update
-            this page as the product evolves.
-          </p>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Contact</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              <p>
+                Questions about this notice: use the contact path on{" "}
+                <a
+                  href="https://www.psmbrokerage.com"
+                  className="font-medium text-foreground underline-offset-2 hover:underline"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  psmbrokerage.com
+                </a>{" "}
+                or your PSM marketer.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>

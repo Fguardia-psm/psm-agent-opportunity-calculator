@@ -64,9 +64,9 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">{horizonYears}-year path</dt>
+                    <dt className="text-muted-foreground">{horizonYears}-year open path</dt>
                     <dd className="font-semibold tabular-nums text-foreground">
-                      {formatCurrency(line.pathCumulative.moderate)}
+                      {line.isOffered ? "—" : formatCurrency(line.pathCumulative.moderate)}
                     </dd>
                   </div>
                   <div>
@@ -142,11 +142,17 @@ export function MultiLineTable({ result }: MultiLineTableProps) {
                       {line.isOffered ? "—" : formatCurrency(line.year1Impact.moderate)}
                     </td>
                     <td className="px-2 py-3.5 text-right tabular-nums font-semibold text-foreground sm:pr-0">
-                      {formatCurrency(line.pathCumulative.moderate)}
-                      <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
-                        {formatCurrency(line.pathCumulative.low)}–
-                        {formatCurrency(line.pathCumulative.high)}
-                      </span>
+                      {line.isOffered ? (
+                        "—"
+                      ) : (
+                        <>
+                          {formatCurrency(line.pathCumulative.moderate)}
+                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+                            {formatCurrency(line.pathCumulative.low)}–
+                            {formatCurrency(line.pathCumulative.high)}
+                          </span>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );

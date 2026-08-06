@@ -5,14 +5,18 @@
  *  1. LEAD_WEBHOOK_URL — POST JSON (Zapier / Make / Slack / CRM)
  *  2. DATABASE_URL — insert into `leads` table (Neon)
  *
- * Never claim success unless delivery is confirmed.
- * This endpoint is intentionally public (no session). Do NOT run
- * assertSameSiteRequest here — HubSpot embeds and marketing-site posts
- * are cross-site by design.
+ * Abuse controls (public form, no session):
+ *  - Origin / Sec-Fetch-Site allowlist (HubSpot + Vercel + localhost)
+ *  - Email + IP rate limits (in-process; best-effort on serverless)
+ *  - Honeypot (silent drop — no CRM write)
+ *  - Zod + NPN/phone/state/consent server validation
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { US_STATES } from "@/lib/calculator/assumptions";
+
+const US_STATE_CODES = new Set(US_STATES.map((s) => s.code));
 
 const snapshotSchema = z
   .object({
@@ -53,8 +57,7 @@ export const leadInputSchema = z.object({
     .string()
     .trim()
     .transform((s) => s.toUpperCase())
-    .pipe(z.string().length(2)),
-  /** NPN is required — digits only, 5–10 characters after strip */
+    .refine((s) => US_STATE_CODES.has(s as never), "Select a valid U.S. state"),
   npn: z
     .string()
     .trim()
@@ -63,8 +66,10 @@ export const leadInputSchema = z.object({
     .regex(/^\d{5,10}$/, "Enter a valid NPN (5–10 digits)"),
   contractedWithPsm: z.enum(["yes", "no", "not-sure"]),
   message: z.string().trim().max(2000).optional().default(""),
+  /** Professional attestation — required server-side */
+  consent: z.literal(true, { message: "Professional consent is required" }),
   calculatorSnapshot: snapshotSchema,
-  /** Honeypot — real users leave empty; bots that fill it are dropped silently */
+  /** Honeypot — real users leave empty */
   website: z.string().max(200).optional().default(""),
 });
 
@@ -74,37 +79,37 @@ export type LeadSubmitResult =
   | { ok: true; mode: "webhook" | "database"; id: string }
   | {
       ok: false;
-      code: "validation" | "rate_limit" | "not_configured" | "delivery_failed" | "forbidden";
+      code:
+        | "validation"
+        | "rate_limit"
+        | "not_configured"
+        | "delivery_failed"
+        | "forbidden";
       message: string;
     };
 
-/** In-process rate limit (server process only). */
+/** In-process rate limit (best-effort on multi-isolate serverless). */
 const rateBucket = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 8;
+const RATE_LIMIT_EMAIL = 5;
+const RATE_LIMIT_IP = 20;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
-function checkRateLimit(email: string): boolean {
-  const key = email.toLowerCase();
+function checkRateLimit(key: string, limit: number): boolean {
   const now = Date.now();
   const row = rateBucket.get(key);
   if (!row || now > row.resetAt) {
     rateBucket.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
     return true;
   }
-  if (row.count >= RATE_LIMIT) return false;
+  if (row.count >= limit) return false;
   row.count += 1;
   return true;
 }
 
-/** Strip to digits only. */
 export function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "");
 }
 
-/**
- * Format as US tel display while typing: (555) 555-5555
- * Keeps leading +1 if 11 digits starting with 1.
- */
 export function formatPhoneInput(raw: string): string {
   let d = digitsOnly(raw).slice(0, 11);
   if (d.length === 11 && d.startsWith("1")) {
@@ -118,16 +123,13 @@ export function formatPhoneInput(raw: string): string {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-/** Valid phone → E.164-ish US storage string or null. */
 export function normalizePhone(raw: string): string | null {
   let d = digitsOnly(raw);
   if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
   if (d.length !== 10) return null;
-  // Store as formatted tel for CRM readability
   return formatPhoneInput(d);
 }
 
-/** NPN: digits only, 5–10 length (NIPR national producer number). */
 export function formatNpnInput(raw: string): string {
   return digitsOnly(raw).slice(0, 10);
 }
@@ -138,7 +140,6 @@ export function normalizeNpn(raw: string): string | null {
   return d;
 }
 
-/** Names: letters, spaces, hyphens, apostrophes — collapse whitespace. */
 export function formatNameInput(raw: string): string {
   return raw
     .replace(/[^\p{L}\p{M}\s'’.\-]/gu, "")
@@ -148,6 +149,48 @@ export function formatNameInput(raw: string): string {
 
 export function formatEmailInput(raw: string): string {
   return raw.replace(/\s/g, "").slice(0, 200);
+}
+
+/** Hosts allowed to call the public lead RPC (browser Origin). */
+export function isAllowedLeadOrigin(origin: string | null, site: string | null): boolean {
+  // Non-browser or same-origin without Origin edge cases
+  if (!origin) {
+    return !site || site === "same-origin" || site === "none";
+  }
+  let host: string;
+  try {
+    host = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  if (host === "localhost" || host === "127.0.0.1") return true;
+  if (host.endsWith(".vercel.app")) return true;
+  if (host === "psmbrokerage.com" || host === "www.psmbrokerage.com") return true;
+
+  const extra = process.env.LEAD_ALLOWED_ORIGINS?.split(",") ?? [];
+  for (const item of extra) {
+    const t = item.trim();
+    if (!t) continue;
+    try {
+      if (new URL(t).hostname.toLowerCase() === host) return true;
+      if (t.toLowerCase() === host) return true;
+    } catch {
+      if (t.toLowerCase() === host) return true;
+    }
+  }
+
+  // Canonical marketing / site URL from env
+  const siteUrl = process.env.VITE_PUBLIC_SITE_URL?.trim();
+  if (siteUrl) {
+    try {
+      if (new URL(siteUrl).hostname.toLowerCase() === host) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return false;
 }
 
 function parseLeadInput(raw: unknown):
@@ -188,6 +231,9 @@ function parseLeadInput(raw: unknown):
             typeof (candidate as { npn?: unknown }).npn === "string"
               ? formatNpnInput((candidate as { npn: string }).npn)
               : (candidate as { npn?: unknown }).npn,
+          consent:
+            (candidate as { consent?: unknown }).consent === true ||
+            (candidate as { consent?: unknown }).consent === "true",
         }
       : candidate;
 
@@ -204,10 +250,12 @@ function parseLeadInput(raw: unknown):
           : field === "email"
             ? "Enter a valid work email."
             : field === "state"
-              ? "Select your state."
+              ? "Select a valid U.S. state."
               : field === "npn"
                 ? "Enter your NPN (5–10 digits, numbers only)."
-                : `Please check ${field}: ${msg}`,
+                : field === "consent"
+                  ? "Please confirm you are a licensed insurance professional."
+                  : `Please check ${field}: ${msg}`,
     };
   }
 
@@ -227,44 +275,61 @@ function parseLeadInput(raw: unknown):
       phone,
       npn,
       email: parsed.data.email.toLowerCase(),
+      consent: true as const,
     },
   };
 }
 
-/**
- * Pass-through validator so Zod never throws at the framework layer.
- * We validate inside the handler and return { ok:false } instead.
- */
 export const submitLead = createServerFn({ method: "POST" })
   .validator((raw: unknown) => raw)
   .handler(async ({ data }): Promise<LeadSubmitResult> => {
     try {
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const { createHash, randomUUID } = await import("node:crypto");
+      const request = getRequest();
+
+      const origin = request?.headers.get("origin") ?? null;
+      const site = request?.headers.get("sec-fetch-site") ?? null;
+      if (!isAllowedLeadOrigin(origin, site)) {
+        return {
+          ok: false,
+          code: "forbidden",
+          message: "Request blocked. Please submit from the official calculator page.",
+        };
+      }
+
       const parsed = parseLeadInput(data);
       if (!parsed.ok) {
         return { ok: false, code: "validation", message: parsed.message };
       }
       const lead = parsed.data;
 
-      const { getRequest } = await import("@tanstack/react-start/server");
-      const { createHash, randomUUID } = await import("node:crypto");
-
+      // Honeypot: drop silently — do not write CRM, do not look different in status code.
+      // Client should not toast "delivered" for id ignored (handled client-side).
       if (lead.website && lead.website.length > 0) {
         return { ok: true, mode: "webhook", id: "ignored" };
       }
 
-      if (!checkRateLimit(lead.email)) {
+      const xf = request?.headers.get("x-forwarded-for");
+      const ip = xf?.split(",")[0]?.trim() || request?.headers.get("x-real-ip") || null;
+      const ipHash = ip ? createHash("sha256").update(ip).digest("hex").slice(0, 32) : "unknown";
+
+      if (!checkRateLimit(`email:${lead.email.toLowerCase()}`, RATE_LIMIT_EMAIL)) {
         return {
           ok: false,
           code: "rate_limit",
           message: "Too many requests from this email. Please try again in about 15 minutes.",
         };
       }
+      if (!checkRateLimit(`ip:${ipHash}`, RATE_LIMIT_IP)) {
+        return {
+          ok: false,
+          code: "rate_limit",
+          message: "Too many requests from this network. Please try again in about 15 minutes.",
+        };
+      }
 
-      const request = getRequest();
       const id = randomUUID();
-      const xf = request?.headers.get("x-forwarded-for");
-      const ip = xf?.split(",")[0]?.trim() || request?.headers.get("x-real-ip") || null;
-      const ipHash = ip ? createHash("sha256").update(ip).digest("hex").slice(0, 32) : null;
       const userAgent = request?.headers.get("user-agent")?.slice(0, 300) ?? null;
 
       const payload = {
@@ -279,6 +344,8 @@ export const submitLead = createServerFn({ method: "POST" })
         npn: lead.npn,
         contractedWithPsm: lead.contractedWithPsm,
         message: lead.message || null,
+        consent: true,
+        consentAt: new Date().toISOString(),
         calculatorSnapshot: lead.calculatorSnapshot ?? null,
       };
 
@@ -300,7 +367,7 @@ export const submitLead = createServerFn({ method: "POST" })
             signal: AbortSignal.timeout(12_000),
           });
           if (res.ok) {
-            void tryInsertLead(id, lead, userAgent, ipHash);
+            void tryInsertLead(id, lead, userAgent, ipHash === "unknown" ? null : ipHash);
             return { ok: true, mode: "webhook", id };
           }
           webhookFailed = true;
@@ -315,7 +382,12 @@ export const submitLead = createServerFn({ method: "POST" })
         }
       }
 
-      const dbOk = await tryInsertLead(id, lead, userAgent, ipHash);
+      const dbOk = await tryInsertLead(
+        id,
+        lead,
+        userAgent,
+        ipHash === "unknown" ? null : ipHash,
+      );
       if (dbOk) {
         return { ok: true, mode: "database", id };
       }
@@ -370,7 +442,10 @@ async function tryInsertLead(
         ${data.npn || null},
         ${data.contractedWithPsm},
         ${data.message || null},
-        ${JSON.stringify(data.calculatorSnapshot ?? null)}::jsonb,
+        ${JSON.stringify({
+          ...(data.calculatorSnapshot ?? {}),
+          consent: true,
+        })}::jsonb,
         ${userAgent},
         ${ipHash}
       )
@@ -382,7 +457,6 @@ async function tryInsertLead(
   }
 }
 
-/** Client-safe mailto fallback when online delivery is offline. */
 export function leadFallbackMailto(data: {
   firstName: string;
   lastName: string;

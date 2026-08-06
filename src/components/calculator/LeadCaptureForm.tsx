@@ -171,6 +171,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           npn: lead.npn,
           contractedWithPsm: lead.contractedWithPsm as "yes" | "no" | "not-sure",
           message: lead.message || "",
+          consent: true as const,
           website: form.website || "",
           calculatorSnapshot: lead.calculatorSnapshot
             ? {
@@ -199,11 +200,26 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             : res;
 
       if (resultBody && typeof resultBody === "object" && "ok" in resultBody && resultBody.ok) {
+        const id =
+          "id" in resultBody && typeof (resultBody as { id?: string }).id === "string"
+            ? (resultBody as { id: string }).id
+            : "";
+        // Honeypot / ignored: do not claim CRM delivery or store anything
+        if (id === "ignored") {
+          setSubmitted(true);
+          return;
+        }
         try {
-          const key = "psm-opportunity-leads";
-          const existing = JSON.parse(localStorage.getItem(key) || "[]") as LeadSubmission[];
-          existing.push(lead);
-          localStorage.setItem(key, JSON.stringify(existing.slice(-20)));
+          // Metadata only — never store email/phone/NPN in localStorage
+          const key = "psm-opportunity-lead-meta";
+          const existing = JSON.parse(localStorage.getItem(key) || "[]") as {
+            id: string;
+            submittedAt: string;
+          }[];
+          existing.push({ id, submittedAt: lead.submittedAt });
+          localStorage.setItem(key, JSON.stringify(existing.slice(-10)));
+          // Purge legacy full-PII key if present
+          localStorage.removeItem("psm-opportunity-leads");
         } catch {
           /* ignore quota */
         }

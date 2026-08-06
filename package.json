@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:math": "npx --yes tsx scripts/math-integrity.ts"
+    "test:math": "npx --yes tsx scripts/math-integrity.ts",
+    "test:lead": "npx --yes tsx scripts/lead-integrity.ts",
+    "test": "npm run test:math && npm run test:lead"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",
@@ -90,5 +92,5 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.1.0"
   },
-  "description": "PSM Agent Opportunity Calculator — Year-1 impact and multi-year compounding for independent agents"
+  "description": "PSM Agent Opportunity Calculator \u2014 Year-1 impact and multi-year compounding for independent agents"
 }

@@ -149,10 +149,17 @@ function resolveProductRevenue(
     return { firstYearRevenue: baseFy, renewalRevenue: baseRen, usingCustomRevenue: false };
   }
   const o = custom.productOverrides[productId];
+  // Cap custom overrides so share links / typos cannot invent absurd commissions
+  const MAX_FY = 25_000;
+  const MAX_REN = 15_000;
   const firstYearRevenue =
-    o?.firstYearRevenue != null && o.firstYearRevenue >= 0 ? o.firstYearRevenue : baseFy;
+    o?.firstYearRevenue != null && o.firstYearRevenue >= 0
+      ? Math.min(MAX_FY, o.firstYearRevenue)
+      : baseFy;
   const renewalRevenue =
-    o?.renewalRevenue != null && o.renewalRevenue >= 0 ? o.renewalRevenue : baseRen;
+    o?.renewalRevenue != null && o.renewalRevenue >= 0
+      ? Math.min(MAX_REN, o.renewalRevenue)
+      : baseRen;
   return {
     firstYearRevenue,
     renewalRevenue,
@@ -510,16 +517,6 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
       persistency,
     );
 
-    const offeredPath = scenarioPathTotals(
-      eligibleActive,
-      eligibleNew,
-      firstYearRevenue,
-      renewalRevenue,
-      horizonYears,
-      false,
-      attach,
-      persistency,
-    );
 
     return {
       productId,
@@ -539,18 +536,10 @@ export function calculateOpportunity(inputs: CalculatorInputs): CalculationResul
         ? emptyTotals()
         : pipelineTotals(eligibleNew, firstYearRevenue, attach),
       year1Impact: isOffered ? emptyTotals() : year1,
-      pathCumulative: isOffered ? offeredPath.cumulative : cumulative,
+      // Covered lines are not open opportunity — show zero path (not residual on already-written book)
+      pathCumulative: isOffered ? emptyTotals() : cumulative,
       moderatePath: isOffered
-        ? buildProductPath(
-            eligibleActive,
-            eligibleNew,
-            firstYearRevenue,
-            renewalRevenue,
-            attach.moderate,
-            persistency.moderate,
-            horizonYears,
-            false,
-          )
+        ? buildProductPath(0, 0, firstYearRevenue, renewalRevenue, 0, persistency.moderate, horizonYears, false)
         : moderatePath,
     };
   });

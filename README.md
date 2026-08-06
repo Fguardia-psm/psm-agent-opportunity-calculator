@@ -73,7 +73,7 @@ Copy `.env.example` and set values in the Vercel project.
 
 ## Lead payload (webhook)
 
-`POST` JSON includes: `id`, `source`, `submittedAt`, name, email, phone, state, optional `npn`, `contractedWithPsm`, `message`, and optional `calculatorSnapshot` (practice-level estimates only — no consumer PHI).
+`POST` JSON includes: `id`, `source`, `submittedAt`, name, email, phone, state, `npn` (required, 5-10 digits), `contractedWithPsm`, `message`, and optional `calculatorSnapshot` (practice-level estimates only — no consumer PHI).
 
 ## Notes
 
