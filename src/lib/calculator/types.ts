@@ -45,7 +45,7 @@ export interface ProductRevenueOverride {
 
 export interface CustomAssumptions {
   useCustom: boolean;
-  /** Planning place rate as whole percent, e.g. 10 = 10% of eligible clients */
+  /** Planning place rate as whole percent, e.g. 35 = 35% of eligible clients */
   attachModeratePercent: number;
   /** Planning persistency as whole percent */
   persistencyModeratePercent: number;

@@ -92,7 +92,7 @@ export function CustomAssumptionsEditor({ value, onChange }: CustomAssumptionsEd
   }, [value.persistencyModeratePercent, persFocused]);
 
   const commitAttach = (raw: string) => {
-    const n = clampInt(Number(raw.replace(/[^\d]/g, "")), 1, 40);
+    const n = clampInt(Number(raw.replace(/[^\d]/g, "")), 1, 60);
     setAttachDraft(String(n));
     onChange({ ...value, useCustom: true, attachModeratePercent: n });
   };
@@ -172,7 +172,7 @@ export function CustomAssumptionsEditor({ value, onChange }: CustomAssumptionsEd
                 onChange={(e) => setAttachDraft(e.target.value.replace(/[^\d]/g, ""))}
                 onBlur={() => {
                   setAttachFocused(false);
-                  commitAttach(attachDraft === "" ? "10" : attachDraft);
+                  commitAttach(attachDraft === "" ? "35" : attachDraft);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();

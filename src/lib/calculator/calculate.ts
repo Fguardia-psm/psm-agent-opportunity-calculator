@@ -120,7 +120,7 @@ export function resolveRates(custom: CustomAssumptions | undefined): {
     };
   }
 
-  const modAttach = clamp(custom.attachModeratePercent, 1, 40) / 100;
+  const modAttach = clamp(custom.attachModeratePercent, 1, 60) / 100;
   // Floor at MIN_PERSISTENCY (85%) — agent retains at least 85% of book
   const modPers = clamp(custom.persistencyModeratePercent, MIN_PERSISTENCY * 100, 98) / 100;
 

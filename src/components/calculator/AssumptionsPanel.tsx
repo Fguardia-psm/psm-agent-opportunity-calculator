@@ -48,7 +48,7 @@ export function AssumptionsPanel() {
                 <li>
                   <span className="font-medium text-foreground">Eligible clients</span> — Medicare
                   lines use your Medicare-age percentage; ACA uses under-65 percentage; life and
-                  ancillary use the full book (place rate keeps it conservative).
+                  ancillary use the full book; default planning place rate is 35% of eligible clients.
                 </li>
                 <li>
                   <span className="font-medium text-foreground">Year-1 impact</span> — (eligible book

@@ -210,9 +210,10 @@ export const RENEWAL_REVENUE: Record<OpportunityProductId, number> =
 
 /** Place-rate on eligible clients (conservative / planning / high) */
 export const ATTACH_RATES: Record<ScenarioKey, number> = {
-  low: 0.05,
-  moderate: 0.1,
-  high: 0.15,
+  // Planning place rate on eligible book + new lives (not 10% — agents cross-sell harder in-book)
+  low: 0.2,
+  moderate: 0.35,
+  high: 0.5,
 };
 
 /**

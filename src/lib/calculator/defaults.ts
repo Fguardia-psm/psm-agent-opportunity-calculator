@@ -3,7 +3,7 @@ import type { CustomAssumptions, CalculatorInputs } from "./types";
 export function defaultCustomAssumptions(): CustomAssumptions {
   return {
     useCustom: false,
-    attachModeratePercent: 10,
+    attachModeratePercent: 35,
     /** Planning default 90% — face-to-face independent field agent */
     persistencyModeratePercent: 90,
     productOverrides: {},
