@@ -1,19 +1,65 @@
-import { Layers, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, MessageCircle, Sparkles, TrendingUp } from "lucide-react";
 import type { CalculationResult } from "@/lib/calculator/types";
 import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DISCLAIMER_TEXT } from "@/lib/calculator/assumptions";
 
 interface ResultsCardProps {
   result: CalculationResult;
 }
 
-const BAND_LABEL: Record<CalculationResult["portfolioBand"], string> = {
-  broad: "Broad catalog",
-  some: "Some opportunity",
-  significant: "Significant opportunity",
-  high: "High opportunity",
-};
+/**
+ * Conversation-strength framing (NOT a grade out of 100).
+ * Agents ignore "30/100" — they act on dollars left on the table + open lines.
+ */
+function conversationStrength(pathModerate: number, openLines: number) {
+  if (openLines === 0 || pathModerate <= 0) {
+    return {
+      label: "Catalog covered",
+      urgency: "Focus on reviews, persistency, and case quality with PSM support.",
+      bar: 12,
+      cta: "Talk with PSM about growth support",
+    };
+  }
+  // Bar scales with planning dollars (caps at ~$120k path = full bar)
+  const bar = Math.min(100, Math.max(18, Math.round((pathModerate / 120_000) * 100)));
+
+  if (pathModerate >= 75_000) {
+    return {
+      label: "Strong case to talk this week",
+      urgency:
+        "Multi-year planning dollars are large enough that a short portfolio review usually pays for itself in clarity alone.",
+      bar,
+      cta: "Request a portfolio review",
+    };
+  }
+  if (pathModerate >= 25_000) {
+    return {
+      label: "Solid expansion opportunity",
+      urgency:
+        "Enough open-line dollars to justify a focused conversation — not a full agency rebuild.",
+      bar,
+      cta: "Talk through my open lines",
+    };
+  }
+  if (pathModerate >= 8_000) {
+    return {
+      label: "Worth a focused review",
+      urgency:
+        "Even mid-size gaps compound with renewals. A 15-minute review beats guessing which line to add first.",
+      bar,
+      cta: "See how PSM would prioritize this",
+    };
+  }
+  return {
+    label: "A few open lines",
+    urgency:
+      "Smaller dollar gap still means room to add one high-fit line. Low pressure — high clarity.",
+    bar: Math.max(bar, 22),
+    cta: "Quick check-in with PSM",
+  };
+}
 
 export function ResultsCard({ result }: ResultsCardProps) {
   const {
@@ -21,8 +67,6 @@ export function ResultsCard({ result }: ResultsCardProps) {
     pathCumulativeTotal,
     existingBookGapTotal,
     newPipelineYear1Total,
-    portfolioScore,
-    portfolioBand,
     hasFullPortfolio,
     horizonYears,
     activeClients,
@@ -34,6 +78,7 @@ export function ResultsCard({ result }: ResultsCardProps) {
     moderatePathByYear,
     missingProducts,
     productLines,
+    topOpportunities,
   } = result;
 
   const lastYear = moderatePathByYear[moderatePathByYear.length - 1];
@@ -50,6 +95,15 @@ export function ResultsCard({ result }: ResultsCardProps) {
   const maOpen = productLines.find(
     (l) => l.productId === "medicare-advantage" && !l.isOffered,
   );
+
+  const openCount = missingProducts.length;
+  const strength = conversationStrength(pathCumulativeTotal.moderate, openCount);
+  const topLine = topOpportunities[0];
+  const topCategory = categoryRollups[0];
+
+  const scrollToLead = () => {
+    document.getElementById("lead-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <Card
@@ -79,8 +133,8 @@ export function ResultsCard({ result }: ResultsCardProps) {
           {!hasFullPortfolio && (
             <>
               {" "}
-              · {missingProducts.length} open line{missingProducts.length === 1 ? "" : "s"} · planning
-              place rate {Math.round(effectiveAttach.moderate * 100)}% · persistency{" "}
+              · {openCount} open line{openCount === 1 ? "" : "s"} · planning place rate{" "}
+              {Math.round(effectiveAttach.moderate * 100)}% · persistency{" "}
               {Math.round(effectivePersistency.moderate * 100)}%
               {usedCustomAssumptions ? " (your overrides)" : ""}
             </>
@@ -298,37 +352,77 @@ export function ResultsCard({ result }: ResultsCardProps) {
           </>
         )}
 
-        <div className="rounded-xl border border-border/80 bg-surface/70 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Layers className="size-4 shrink-0 text-accent" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Catalog gap score
+        {/* CTA motivator — dollars + open lines, never a low /100 grade */}
+        <div className="rounded-2xl border border-accent/30 bg-accent/[0.06] px-4 py-4 sm:px-5 sm:py-5 print:hidden">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-center gap-2 text-accent">
+                <MessageCircle className="size-4 shrink-0" />
+                <p className="text-xs font-semibold uppercase tracking-wider">
+                  Why this is worth a conversation
+                </p>
+              </div>
+              <p className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+                {strength.label}
               </p>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Share of PSM catalog lines not yet offered — not a performance rating
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                {strength.urgency}
+              </p>
+              {!hasFullPortfolio && (
+                <ul className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <li className="rounded-full border border-border bg-surface px-2.5 py-1 font-medium text-foreground">
+                    {openCount} open line{openCount === 1 ? "" : "s"}
+                  </li>
+                  <li className="rounded-full border border-border bg-surface px-2.5 py-1 font-medium tabular-nums text-foreground">
+                    {formatCurrency(pathCumulativeTotal.moderate)} planning path
+                  </li>
+                  {topLine && (
+                    <li className="rounded-full border border-border bg-surface px-2.5 py-1 text-muted-foreground">
+                      Largest:{" "}
+                      <span className="font-medium text-foreground">{topLine.label}</span>
+                    </li>
+                  )}
+                  {topCategory && (
+                    <li className="rounded-full border border-border bg-surface px-2.5 py-1 text-muted-foreground">
+                      Focus category:{" "}
+                      <span className="font-medium text-foreground">{topCategory.label}</span>
+                    </li>
+                  )}
+                </ul>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                This is not a performance grade. It is an estimate of dollars and lines still open
+                in your practice — illustrative only.
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
-                {portfolioScore}
-                <span className="text-base font-normal text-muted-foreground">/100</span>
-              </p>
-              <p className="text-xs font-medium text-accent">{BAND_LABEL[portfolioBand]}</p>
-            </div>
+            <Button type="button" size="lg" className="shrink-0 w-full sm:w-auto" onClick={scrollToLead}>
+              {strength.cta}
+              <ArrowRight className="size-4" />
+            </Button>
           </div>
-          <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-valuenow={portfolioScore}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Catalog gap score"
-          >
+
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Conversation priority (based on planning dollars)</span>
+              <span className="font-medium text-accent">{strength.label}</span>
+            </div>
             <div
-              className="h-full rounded-full bg-accent transition-[width] duration-300"
-              style={{ width: `${Math.min(100, Math.max(0, portfolioScore))}%` }}
-            />
+              className="h-2.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-valuenow={strength.bar}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Conversation priority based on planning dollars"
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-500"
+                style={{ width: `${strength.bar}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Filled by estimated multi-year path size — not a test score. Larger dollars mean a
+              stronger reason to book a short review.
+            </p>
           </div>
         </div>
 
