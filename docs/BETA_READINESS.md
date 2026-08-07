@@ -121,7 +121,7 @@ No login required for the core calculator. Lead form collects agent PII only (no
 These failed in real use before — re-check after every share/lead change:
 
 - [ ] **Copy estimate** works on desktop Chrome and mobile Safari (button + visible text boxes)
-- [ ] **Copy save link** paste restores results via `?s=`
+- [ ] **No save/copy link** (removed — marketing URLs do not restore state)
 - [ ] **No long mailto** for estimate email (removed by design)
 - [ ] Lead **delivery failure** shows **Copy my request** (not only email app)
 - [ ] **Print** hidden or messaged inside HubSpot iframe
