@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import { Hero } from "@/components/calculator/Hero";
 import { CalculatorWizard } from "@/components/calculator/CalculatorWizard";
 import { ResultsCard } from "@/components/calculator/ResultsCard";
 import { MultiLineTable } from "@/components/calculator/MultiLineTable";
-import { BookPathChart } from "@/components/calculator/BookPathChart";
 import { OpportunityBreakdown } from "@/components/calculator/OpportunityBreakdown";
 import { ScenarioCompare } from "@/components/calculator/ScenarioCompare";
 import { CustomAssumptionsEditor } from "@/components/calculator/CustomAssumptionsEditor";
@@ -29,6 +28,22 @@ import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
 import { EmbedBreakout } from "@/components/calculator/EmbedBreakout";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
+
+/** Recharts is heavy — load only when results are shown (eblast first paint). */
+const BookPathChart = lazy(() =>
+  import("@/components/calculator/BookPathChart").then((m) => ({ default: m.BookPathChart })),
+);
+
+function ChartFallback() {
+  return (
+    <div
+      className="flex min-h-[16rem] items-center justify-center rounded-2xl border border-border bg-surface text-sm text-muted-foreground"
+      role="status"
+    >
+      Loading path chart…
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,6 +65,7 @@ function Home() {
   const [restored, setRestored] = useState(false);
   const calculatorRef = useRef<HTMLElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
+  const recalcTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -74,15 +90,28 @@ function Home() {
     setRestored(true);
   }, []);
 
+  // Debounce share-URL writes — avoid history spam on every keystroke under eblast traffic
   useEffect(() => {
     if (!showResults || !canCalculate(inputs) || typeof window === "undefined") return;
-    const url = buildShareUrl(inputs);
-    const enc = url.split("?s=")[1];
-    if (enc) window.history.replaceState(null, "", `?s=${enc}`);
+    const t = setTimeout(() => {
+      const url = buildShareUrl(inputs);
+      const enc = url.split("?s=")[1];
+      if (enc) window.history.replaceState(null, "", `?s=${enc}`);
+    }, 200);
+    return () => clearTimeout(t);
   }, [inputs, showResults]);
 
+  useEffect(() => {
+    return () => {
+      if (recalcTimer.current) clearTimeout(recalcTimer.current);
+    };
+  }, []);
 
   const handleCalculate = useCallback(() => {
+    if (recalcTimer.current) {
+      clearTimeout(recalcTimer.current);
+      recalcTimer.current = null;
+    }
     const synced = {
       ...inputs,
       productsOffered: productsFromPrimaryCategories(inputs.primaryCategories),
@@ -95,7 +124,6 @@ function Home() {
     }
     setResult(next);
     setShowResults(true);
-    // Scroll to results section top (not mid-card) so sticky chrome doesn't hide the header
     requestAnimationFrame(() => {
       setTimeout(() => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -103,7 +131,11 @@ function Home() {
     });
   }, [inputs]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
+    if (recalcTimer.current) {
+      clearTimeout(recalcTimer.current);
+      recalcTimer.current = null;
+    }
     setInputs(defaultInputs());
     setResult(null);
     setShowResults(false);
@@ -113,18 +145,25 @@ function Home() {
     requestAnimationFrame(() => {
       calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  };
+  }, []);
 
-  const handleInputsChange = (next: CalculatorInputs) => {
-    const synced = {
-      ...next,
-      productsOffered: productsFromPrimaryCategories(next.primaryCategories),
-    };
-    setInputs(synced);
-    if (showResults) {
-      setResult(calculateOpportunity(synced));
-    }
-  };
+  const handleInputsChange = useCallback(
+    (next: CalculatorInputs) => {
+      const synced = {
+        ...next,
+        productsOffered: productsFromPrimaryCategories(next.primaryCategories),
+      };
+      setInputs(synced);
+      if (!showResults) return;
+      // Debounce multi-year path math while agents type client counts / rates
+      if (recalcTimer.current) clearTimeout(recalcTimer.current);
+      recalcTimer.current = setTimeout(() => {
+        setResult(calculateOpportunity(synced));
+        recalcTimer.current = null;
+      }, 120);
+    },
+    [showResults],
+  );
 
   if (!restored) {
     return (
@@ -275,7 +314,9 @@ function Home() {
               }
             />
             <div id="path" className="scroll-offset-deep">
-              <BookPathChart result={result} />
+              <Suspense fallback={<ChartFallback />}>
+                <BookPathChart result={result} />
+              </Suspense>
             </div>
             <div id="scenarios" className="scroll-offset-deep">
               <ScenarioCompare result={result} />
