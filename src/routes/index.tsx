@@ -14,7 +14,6 @@ import { MultiLineTable } from "@/components/calculator/MultiLineTable";
 import { OpportunityBreakdown } from "@/components/calculator/OpportunityBreakdown";
 import { ScenarioCompare } from "@/components/calculator/ScenarioCompare";
 import { CustomAssumptionsEditor } from "@/components/calculator/CustomAssumptionsEditor";
-import { ShareActions } from "@/components/calculator/ShareActions";
 import { AgentPlaybook } from "@/components/calculator/AgentPlaybook";
 import { StateCallout } from "@/components/calculator/StateCallout";
 import { LeadCaptureForm } from "@/components/calculator/LeadCaptureForm";
@@ -316,9 +315,6 @@ function Home() {
             <OpportunityBreakdown result={result} />
             <div id="playbook" className="scroll-offset-deep">
               <AgentPlaybook result={result} />
-            </div>
-            <div id="share" className="scroll-offset-deep">
-              <ShareActions inputs={inputs} result={result} />
             </div>
             <NextStepCta result={result} />
             <div className="print:hidden">
