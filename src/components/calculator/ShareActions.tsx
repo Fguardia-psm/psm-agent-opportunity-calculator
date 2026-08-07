@@ -1,21 +1,45 @@
 import { useState } from "react";
-import { Check, Copy, Link2, Mail, Printer } from "lucide-react";
+import { Check, Copy, Link2, Printer, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import type { CalculationResult, CalculatorInputs } from "@/lib/calculator/types";
 import { buildEstimateSummary, buildShareUrl } from "@/lib/calculator/share";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface ShareActionsProps {
   inputs: CalculatorInputs;
   result: CalculationResult;
 }
 
+async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  // Fallback for in-app browsers / non-secure contexts (common in mobile iframes)
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function ShareActions({ inputs, result }: ShareActionsProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
-  const [email, setEmail] = useState("");
 
   const summary = buildEstimateSummary(inputs, {
     year1Low: result.year1ImpactTotal.low,
@@ -34,38 +58,57 @@ export function ShareActions({ inputs, result }: ShareActionsProps) {
 
   const copyLink = async () => {
     const url = shareUrl();
-    try {
-      await navigator.clipboard.writeText(url);
+    const ok = await writeClipboard(url);
+    if (ok) {
       if (typeof window !== "undefined") {
         const enc = url.split("?s=")[1];
         if (enc) window.history.replaceState(null, "", `?s=${enc}`);
       }
       setCopiedLink(true);
+      toast.success("Save link copied");
       setTimeout(() => setCopiedLink(false), 2000);
-    } catch {
-      /* ignore */
+    } else {
+      toast.error("Could not copy — long-press and copy the address bar link");
     }
   };
 
   const copySummary = async () => {
-    try {
-      await navigator.clipboard.writeText(summary);
+    const text = `${summary}\n\nSaved link:\n${shareUrl()}\n`;
+    const ok = await writeClipboard(text);
+    if (ok) {
       setCopiedSummary(true);
+      toast.success("Estimate summary copied");
       setTimeout(() => setCopiedSummary(false), 2000);
-    } catch {
-      /* ignore */
+    } else {
+      toast.error("Could not copy on this device — try Share instead");
     }
   };
 
-  const emailEstimate = () => {
-    const to = email.trim();
-    const subject = encodeURIComponent("My PSM Agent Opportunity estimate (illustrative)");
-    const body = encodeURIComponent(
-      `${summary}\n\nSaved link (practice inputs only):\n${shareUrl()}\n`,
-    );
-    window.location.href = to
-      ? `mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`
-      : `mailto:?subject=${subject}&body=${body}`;
+  /** Native share sheet (works on mobile). No mailto — URL length breaks email apps. */
+  const shareNative = async () => {
+    const url = shareUrl();
+    const text = `${summary}\n\n${url}`;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "PSM Agent Opportunity estimate (illustrative)",
+          text: summary,
+          url,
+        });
+        toast.success("Shared");
+        return;
+      } catch (err) {
+        // User cancelled — not an error
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+    // Fallback: copy full package
+    const ok = await writeClipboard(text);
+    if (ok) {
+      toast.success("Estimate copied — paste into Messages or email");
+    } else {
+      toast.error("Sharing is not available in this browser");
+    }
   };
 
   return (
@@ -73,47 +116,48 @@ export function ShareActions({ inputs, result }: ShareActionsProps) {
       <CardHeader>
         <CardTitle className="text-lg sm:text-xl">Take this with you</CardTitle>
         <CardDescription>
-          Bookmark your numbers, email yourself, or print a one-pager — no private client data.
+          Copy a save link, share your illustrative estimate, or print a one-pager — practice
+          numbers only, no private client data.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button type="button" onClick={copyLink}>
+          <Button type="button" className="min-h-12 w-full sm:w-auto" onClick={copyLink}>
             {copiedLink ? <Check className="size-4" /> : <Link2 className="size-4" />}
             {copiedLink ? "Link copied" : "Copy save link"}
           </Button>
-          <Button type="button" variant="outline" onClick={copySummary}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-12 w-full sm:w-auto"
+            onClick={copySummary}
+          >
             {copiedSummary ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copiedSummary ? "Summary copied" : "Copy estimate summary"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => window.print()}>
+          <Button
+            type="button"
+            variant="accent"
+            className="min-h-12 w-full sm:w-auto"
+            onClick={shareNative}
+          >
+            <Share2 className="size-4" />
+            Share estimate
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-12 w-full sm:w-auto"
+            onClick={() => window.print()}
+          >
             <Printer className="size-4" />
             Print / save PDF
           </Button>
         </div>
-
-        <div className="rounded-xl border border-border bg-muted/20 p-4">
-          <Label htmlFor="email-estimate" className="text-sm">
-            Email me this estimate
-          </Label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Opens your email app with Year-1 and multi-year figures pre-filled.
-          </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="email-estimate"
-              type="email"
-              placeholder="you@agency.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <Button type="button" variant="accent" onClick={emailEstimate}>
-              <Mail className="size-4" />
-              Open email
-            </Button>
-          </div>
-        </div>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          On phones, use <span className="font-medium text-foreground">Share estimate</span> or
+          copy — we do not open the mail app from this page (mobile email links are unreliable).
+        </p>
       </CardContent>
     </Card>
   );
