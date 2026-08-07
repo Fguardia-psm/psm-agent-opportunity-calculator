@@ -101,7 +101,7 @@ function PrivacyPage() {
                 not use this form to sell consumer insurance policies to you as a customer.
               </p>
               <p>
-                Save links in the URL encode practice inputs only so you can bookmark or share an
+                Estimate text you copy includes practice-level inputs only so you can paste or share an
                 estimate. Do not put private client data into those inputs.
               </p>
               <p>

@@ -2,10 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { calculateOpportunity, canCalculate } from "@/lib/calculator/calculate";
+import { calculateOpportunity } from "@/lib/calculator/calculate";
 import { defaultInputs } from "@/lib/calculator/defaults";
 import { productsFromPrimaryCategories } from "@/lib/calculator/assumptions";
-import { buildShareUrl, decodeInputs, readShareParam } from "@/lib/calculator/share";
+import { decodeInputs, readShareParam } from "@/lib/calculator/share";
 import type { CalculationResult, CalculatorInputs, LeadSubmission } from "@/lib/calculator/types";
 import { Hero } from "@/components/calculator/Hero";
 import { CalculatorWizard } from "@/components/calculator/CalculatorWizard";
@@ -89,17 +89,6 @@ function Home() {
     }
     setRestored(true);
   }, []);
-
-  // Debounce share-URL writes — avoid history spam on every keystroke under eblast traffic
-  useEffect(() => {
-    if (!showResults || !canCalculate(inputs) || typeof window === "undefined") return;
-    const t = setTimeout(() => {
-      const url = buildShareUrl(inputs);
-      const enc = url.split("?s=")[1];
-      if (enc) window.history.replaceState(null, "", `?s=${enc}`);
-    }, 200);
-    return () => clearTimeout(t);
-  }, [inputs, showResults]);
 
   useEffect(() => {
     return () => {

@@ -6,7 +6,7 @@ const LINKS = [
   { href: "#scenarios", label: "Scenarios", short: "Scenarios" },
   { href: "#stack", label: "Stack", short: "Stack" },
   { href: "#playbook", label: "Playbook", short: "Playbook" },
-  { href: "#share", label: "Save", short: "Save" },
+  { href: "#share", label: "Copy", short: "Copy" },
   { href: "#lead-form", label: "Work with PSM", short: "Talk to PSM", primary: true },
 ] as const;
 
