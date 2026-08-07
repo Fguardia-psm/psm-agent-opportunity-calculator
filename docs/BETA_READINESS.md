@@ -114,3 +114,15 @@ No login required for the core calculator. Lead form collects agent PII only (no
 | Product | | | |
 | Marketing / HubSpot | | | |
 | Engineering | | | |
+
+
+## Fragile browser APIs (regression watch)
+
+These failed in real use before — re-check after every share/lead change:
+
+- [ ] **Copy estimate** works on desktop Chrome and mobile Safari (button + visible text boxes)
+- [ ] **Copy save link** paste restores results via `?s=`
+- [ ] **No long mailto** for estimate email (removed by design)
+- [ ] Lead **delivery failure** shows **Copy my request** (not only email app)
+- [ ] **Print** hidden or messaged inside HubSpot iframe
+- [ ] Place-rate helper text says **35% / 20–50%**, not 5–15%

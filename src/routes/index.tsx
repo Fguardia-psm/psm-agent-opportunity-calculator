@@ -81,11 +81,6 @@ function Home() {
     if (enc) window.history.replaceState(null, "", `?s=${enc}`);
   }, [inputs, showResults]);
 
-  const scrollToResultsTop = () => {
-    requestAnimationFrame(() => {
-      document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
 
   const handleCalculate = useCallback(() => {
     const synced = {
@@ -104,7 +99,7 @@ function Home() {
     requestAnimationFrame(() => {
       setTimeout(() => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
+      }, 80);
     });
   }, [inputs]);
 

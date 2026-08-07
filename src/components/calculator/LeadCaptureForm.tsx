@@ -36,6 +36,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { copyText } from "@/lib/clipboard";
 
 interface LeadCaptureFormProps {
   inputs: CalculatorInputs;
@@ -83,6 +84,8 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [fallbackMailto, setFallbackMailto] = useState<string | null>(null);
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
+  const [fallbackCopied, setFallbackCopied] = useState(false);
 
   const set =
     <K extends keyof FormState>(key: K) =>
@@ -154,6 +157,27 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     submittedAt: new Date().toISOString(),
   });
 
+  const buildFallbackPackage = (lead: LeadSubmission) => {
+    const summary = result
+      ? `Year-1 planning (illustrative): ${formatCurrency(result.year1ImpactTotal.moderate)} (range ${formatCurrency(result.year1ImpactTotal.low)}–${formatCurrency(result.year1ImpactTotal.high)}); ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
+      : "";
+    return [
+      "Portfolio review request — Agent Opportunity Calculator",
+      "",
+      `Name: ${lead.firstName} ${lead.lastName}`,
+      `Email: ${lead.email}`,
+      `Phone: ${lead.phone}`,
+      `State: ${lead.state || "—"}`,
+      form.npnPending ? "NPN: pending" : lead.npn ? `NPN: ${lead.npn}` : "",
+      lead.message ? `Focus: ${lead.message}` : "",
+      summary ? `Estimate: ${summary}` : "",
+      "",
+      "Please follow up about contracting / multi-line support.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  };
+
   const buildMailto = (lead: LeadSubmission) =>
     leadFallbackMailto({
       firstName: lead.firstName,
@@ -164,8 +188,9 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       npn: lead.npn,
       npnPending: form.npnPending,
       message: lead.message,
+      // Keep body short — long mailto breaks mobile mail apps
       summary: result
-        ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
+        ? `Illustrative Year-1 ~${formatCurrency(result.year1ImpactTotal.moderate)}`
         : undefined,
     });
 
@@ -245,8 +270,10 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           : "We could not deliver your request online. Use the email fallback below.";
 
       setServerError(message);
+      setFallbackText(buildFallbackPackage(lead));
       setFallbackMailto(buildMailto(lead));
-      toast.error("Online delivery unavailable — use email fallback");
+      setFallbackCopied(false);
+      toast.error("Online delivery unavailable — copy your request below");
     } catch (err) {
       const detail =
         err instanceof Error && err.message && err.message.length < 180
@@ -254,10 +281,12 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           : null;
       setServerError(
         detail
-          ? `Could not submit: ${detail}. Use the email fallback so a PSM teammate still gets your request.`
-          : "We could not complete the online submission. Use the email fallback so a PSM teammate still gets your request.",
+          ? `Could not submit: ${detail}. Copy your request below so a PSM teammate still gets it.`
+          : "We could not complete the online submission. Copy your request below so a PSM teammate still gets it.",
       );
+      setFallbackText(buildFallbackPackage(lead));
       setFallbackMailto(buildMailto(lead));
+      setFallbackCopied(false);
       toast.error("Could not submit online");
     } finally {
       setSubmitting(false);
@@ -587,13 +616,49 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             >
               <p className="font-medium text-danger">Submission not delivered online</p>
               <p className="mt-1 text-xs text-muted-foreground">{serverError}</p>
-              {fallbackMailto && (
-                <Button asChild type="button" variant="outline" size="sm" className="mt-3 min-h-11">
-                  <a href={fallbackMailto}>
-                    <Mail className="size-3.5" />
-                    Email my request to PSM
-                  </a>
-                </Button>
+              {fallbackText && (
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    readOnly
+                    rows={8}
+                    value={fallbackText}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-foreground"
+                    aria-label="Request text to copy"
+                  />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      variant="accent"
+                      size="sm"
+                      className="min-h-11"
+                      onClick={async () => {
+                        const ok = await copyText(fallbackText);
+                        if (ok) {
+                          setFallbackCopied(true);
+                          toast.success("Request copied — paste into email or text");
+                          setTimeout(() => setFallbackCopied(false), 2500);
+                        } else {
+                          toast.error("Select the text above and press Ctrl+C / ⌘C");
+                        }
+                      }}
+                    >
+                      {fallbackCopied ? "Copied" : "Copy my request"}
+                    </Button>
+                    {fallbackMailto && (
+                      <Button asChild type="button" variant="outline" size="sm" className="min-h-11">
+                        <a href={fallbackMailto}>
+                          <Mail className="size-3.5" />
+                          Try email app
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Prefer copy on phones — long email links often fail. Then paste into Mail,
+                    Gmail, or Messages to agents@psmbrokerage.com.
+                  </p>
+                </div>
               )}
             </div>
           )}

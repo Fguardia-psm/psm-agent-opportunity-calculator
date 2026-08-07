@@ -180,7 +180,7 @@ export function CustomAssumptionsEditor({ value, onChange }: CustomAssumptionsEd
                 className="h-11 tabular-nums"
               />
               <p className="text-[11px] text-muted-foreground">
-                Share of eligible clients you place each year (planning scenario). Typical range 5–15.
+                Share of eligible clients you place each year (planning scenario). Default 35% (about 1 in 3). Band about 20–50%.
               </p>
             </div>
 

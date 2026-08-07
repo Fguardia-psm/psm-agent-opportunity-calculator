@@ -578,18 +578,12 @@ export function leadFallbackMailto(data: {
   );
   const body = encodeURIComponent(
     [
-      "Portfolio review request from the Agent Opportunity Calculator",
-      "",
-      `Name: ${data.firstName} ${data.lastName}`,
-      `Email: ${data.email}`,
-      `Phone: ${data.phone}`,
-      `State: ${data.state}`,
-      data.npnPending ? "NPN: pending / not yet issued" : data.npn ? `NPN: ${data.npn}` : "",
-      data.message ? `Focus: ${data.message}` : "",
-      "",
+      // Keep short — long mailto bodies break mobile mail apps
+      `PSM portfolio review: ${data.firstName} ${data.lastName}`,
+      `Phone ${data.phone} · ${data.state}`,
+      data.npnPending ? "NPN pending" : data.npn ? `NPN ${data.npn}` : "",
       data.summary || "",
-      "",
-      "(Submitted via email fallback — online delivery was not available.)",
+      "Online form delivery was unavailable.",
     ]
       .filter(Boolean)
       .join("\n"),
