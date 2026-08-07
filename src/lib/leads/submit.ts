@@ -1,15 +1,9 @@
 /**
  * Public lead capture — server function + client-safe helpers.
  *
- * Delivery modes (first successful match):
- *  1. LEAD_WEBHOOK_URL — POST JSON (Zapier / Make / Slack / CRM)
- *  2. DATABASE_URL — insert into `leads` table (Neon)
- *
- * Abuse controls (public form, no session):
- *  - Origin / Sec-Fetch-Site allowlist (HubSpot + Vercel + localhost)
- *  - Email + IP rate limits (in-process; best-effort on serverless)
- *  - Honeypot (silent drop — no CRM write)
- *  - Zod + NPN/phone/state/consent server validation
+ * Delivery: LEAD_WEBHOOK_URL and/or DATABASE_URL.
+ * Abuse: fail-closed Origin allowlist (no Origin → reject unless same-origin),
+ * email+IP rate limits (best-effort on serverless), honeypot.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -48,30 +42,47 @@ const snapshotSchema = z
   .optional()
   .nullable();
 
-export const leadInputSchema = z.object({
-  firstName: z.string().trim().min(1).max(80),
-  lastName: z.string().trim().min(1).max(80),
-  email: z.string().trim().email().max(200),
-  phone: z.string().trim().min(7).max(40),
-  state: z
-    .string()
-    .trim()
-    .transform((s) => s.toUpperCase())
-    .refine((s) => US_STATE_CODES.has(s as never), "Select a valid U.S. state"),
-  npn: z
-    .string()
-    .trim()
-    .min(1, "NPN is required")
-    .max(15)
-    .regex(/^\d{5,10}$/, "Enter a valid NPN (5–10 digits)"),
-  contractedWithPsm: z.enum(["yes", "no", "not-sure"]),
-  message: z.string().trim().max(2000).optional().default(""),
-  /** Professional attestation — required server-side */
-  consent: z.literal(true, { message: "Professional consent is required" }),
-  calculatorSnapshot: snapshotSchema,
-  /** Honeypot — real users leave empty */
-  website: z.string().max(200).optional().default(""),
-});
+export const leadInputSchema = z
+  .object({
+    firstName: z.string().trim().min(1).max(80),
+    lastName: z.string().trim().min(1).max(80),
+    email: z.string().trim().email().max(200),
+    phone: z.string().trim().min(7).max(40),
+    state: z
+      .string()
+      .trim()
+      .transform((s) => s.toUpperCase())
+      .refine((s) => US_STATE_CODES.has(s as never), "Select a valid U.S. state"),
+    /** Digits 5–10, or empty when npnPending */
+    npn: z.string().trim().max(15).optional().default(""),
+    /** Recruit / pre-license path when NPN not yet issued */
+    npnPending: z.boolean().optional().default(false),
+    contractedWithPsm: z.enum(["yes", "no", "not-sure"]),
+    message: z.string().trim().max(2000).optional().default(""),
+    consent: z.literal(true, { message: "Professional consent is required" }),
+    calculatorSnapshot: snapshotSchema,
+    website: z.string().max(200).optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    const digits = data.npn.replace(/\D/g, "");
+    if (data.npnPending) {
+      if (digits.length > 0 && (digits.length < 5 || digits.length > 10)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["npn"],
+          message: "If entered, NPN must be 5–10 digits",
+        });
+      }
+      return;
+    }
+    if (digits.length < 5 || digits.length > 10) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["npn"],
+        message: "Enter your NPN (5–10 digits) or mark NPN pending",
+      });
+    }
+  });
 
 export type LeadInput = z.infer<typeof leadInputSchema>;
 
@@ -88,10 +99,9 @@ export type LeadSubmitResult =
       message: string;
     };
 
-/** In-process rate limit (best-effort on multi-isolate serverless). */
 const rateBucket = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_EMAIL = 5;
-const RATE_LIMIT_IP = 20;
+const RATE_LIMIT_IP = 15;
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 
 function checkRateLimit(key: string, limit: number): boolean {
@@ -112,11 +122,8 @@ export function digitsOnly(raw: string): string {
 
 export function formatPhoneInput(raw: string): string {
   let d = digitsOnly(raw).slice(0, 11);
-  if (d.length === 11 && d.startsWith("1")) {
-    d = d.slice(1);
-  } else {
-    d = d.slice(0, 10);
-  }
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  else d = d.slice(0, 10);
   if (d.length === 0) return "";
   if (d.length <= 3) return `(${d}`;
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
@@ -142,7 +149,7 @@ export function normalizeNpn(raw: string): string | null {
 
 export function formatNameInput(raw: string): string {
   return raw
-    .replace(/[^\p{L}\p{M}\s'’.\-]/gu, "")
+    .replace(/[^\p{L}\p{M}\s'’.-]/gu, "")
     .replace(/\s+/g, " ")
     .slice(0, 80);
 }
@@ -151,12 +158,51 @@ export function formatEmailInput(raw: string): string {
   return raw.replace(/\s/g, "").slice(0, 200);
 }
 
-/** Hosts allowed to call the public lead RPC (browser Origin). */
-export function isAllowedLeadOrigin(origin: string | null, site: string | null): boolean {
-  // Non-browser or same-origin without Origin edge cases
-  if (!origin) {
-    return !site || site === "same-origin" || site === "none";
+/** Explicit production / marketing hosts (not every *.vercel.app preview). */
+function builtInAllowedHosts(): Set<string> {
+  const hosts = new Set<string>([
+    "localhost",
+    "127.0.0.1",
+    "psmbrokerage.com",
+    "www.psmbrokerage.com",
+    "psm-agent-opportunity-calculator.vercel.app",
+  ]);
+
+  const addHost = (raw: string | undefined) => {
+    if (!raw?.trim()) return;
+    try {
+      const h = raw.includes("://")
+        ? new URL(raw).hostname.toLowerCase()
+        : raw.replace(/^https?:\/\//, "").split("/")[0].toLowerCase();
+      if (h) hosts.add(h);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  addHost(process.env.VITE_PUBLIC_SITE_URL);
+  addHost(process.env.VITE_PUBLIC_APP_URL);
+  addHost(process.env.VERCEL_URL);
+  addHost(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+
+  for (const item of process.env.LEAD_ALLOWED_ORIGINS?.split(",") ?? []) {
+    addHost(item.trim());
   }
+
+  return hosts;
+}
+
+/**
+ * Fail-closed origin gate for public lead POST.
+ * - Browser POSTs send Origin → must match allowlist.
+ * - Missing Origin: only same-origin (browser navigation quirks), NOT scripts with no headers.
+ */
+export function isAllowedLeadOrigin(origin: string | null, site: string | null): boolean {
+  if (!origin) {
+    // Reject curl/scripts that omit Origin. Allow only true same-origin browser cases.
+    return site === "same-origin";
+  }
+
   let host: string;
   try {
     host = new URL(origin).hostname.toLowerCase();
@@ -164,33 +210,67 @@ export function isAllowedLeadOrigin(origin: string | null, site: string | null):
     return false;
   }
 
-  if (host === "localhost" || host === "127.0.0.1") return true;
-  if (host.endsWith(".vercel.app")) return true;
-  if (host === "psmbrokerage.com" || host === "www.psmbrokerage.com") return true;
+  const allowed = builtInAllowedHosts();
+  if (allowed.has(host)) return true;
 
-  const extra = process.env.LEAD_ALLOWED_ORIGINS?.split(",") ?? [];
-  for (const item of extra) {
-    const t = item.trim();
-    if (!t) continue;
-    try {
-      if (new URL(t).hostname.toLowerCase() === host) return true;
-      if (t.toLowerCase() === host) return true;
-    } catch {
-      if (t.toLowerCase() === host) return true;
-    }
-  }
-
-  // Canonical marketing / site URL from env
-  const siteUrl = process.env.VITE_PUBLIC_SITE_URL?.trim();
-  if (siteUrl) {
-    try {
-      if (new URL(siteUrl).hostname.toLowerCase() === host) return true;
-    } catch {
-      /* ignore */
-    }
-  }
-
+  // Preview deployments: only exact VERCEL_URL host already added — not wildcard *.vercel.app
   return false;
+}
+
+/** Unwrap TanStack server-fn / seroval-ish client payloads into LeadSubmitResult. */
+export function unwrapLeadResult(raw: unknown): LeadSubmitResult | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const asResult = (v: unknown): LeadSubmitResult | null => {
+    if (!v || typeof v !== "object") return null;
+    if (!("ok" in v)) return null;
+    const ok = Boolean((v as { ok: unknown }).ok);
+    if (ok) {
+      const mode = (v as { mode?: string }).mode;
+      const id = (v as { id?: string }).id;
+      if ((mode === "webhook" || mode === "database") && typeof id === "string") {
+        return { ok: true, mode, id };
+      }
+      // Honeypot / partial success shapes
+      if (typeof id === "string") {
+        return { ok: true, mode: "webhook", id };
+      }
+      return null;
+    }
+    const codeRaw = (v as { code?: unknown }).code;
+    const codes = [
+      "validation",
+      "rate_limit",
+      "not_configured",
+      "delivery_failed",
+      "forbidden",
+    ] as const;
+    const code = codes.includes(codeRaw as (typeof codes)[number])
+      ? (codeRaw as (typeof codes)[number])
+      : "delivery_failed";
+    const messageRaw = (v as { message?: unknown }).message;
+    return {
+      ok: false,
+      code,
+      message: typeof messageRaw === "string" ? messageRaw : "Submission failed",
+    };
+  };
+
+  const direct = asResult(raw);
+  if (direct) return direct;
+
+  if ("result" in raw) {
+    const nested = asResult((raw as { result: unknown }).result);
+    if (nested) return nested;
+  }
+
+  // Some clients nest under data
+  if ("data" in raw) {
+    const nested = asResult((raw as { data: unknown }).data);
+    if (nested) return nested;
+  }
+
+  return null;
 }
 
 function parseLeadInput(raw: unknown):
@@ -231,6 +311,9 @@ function parseLeadInput(raw: unknown):
             typeof (candidate as { npn?: unknown }).npn === "string"
               ? formatNpnInput((candidate as { npn: string }).npn)
               : (candidate as { npn?: unknown }).npn,
+          npnPending:
+            (candidate as { npnPending?: unknown }).npnPending === true ||
+            (candidate as { npnPending?: unknown }).npnPending === "true",
           consent:
             (candidate as { consent?: unknown }).consent === true ||
             (candidate as { consent?: unknown }).consent === "true",
@@ -252,7 +335,7 @@ function parseLeadInput(raw: unknown):
             : field === "state"
               ? "Select a valid U.S. state."
               : field === "npn"
-                ? "Enter your NPN (5–10 digits, numbers only)."
+                ? "Enter your NPN (5–10 digits) or check “NPN pending”."
                 : field === "consent"
                   ? "Please confirm you are a licensed insurance professional."
                   : `Please check ${field}: ${msg}`,
@@ -263,9 +346,12 @@ function parseLeadInput(raw: unknown):
   if (!phone) {
     return { ok: false, message: "Enter a valid 10-digit U.S. phone number." };
   }
-  const npn = normalizeNpn(parsed.data.npn);
-  if (!npn) {
-    return { ok: false, message: "Enter your NPN (5–10 digits, numbers only)." };
+
+  const npnPending = Boolean(parsed.data.npnPending);
+  const npnDigits = formatNpnInput(parsed.data.npn || "");
+  const npn = npnPending ? npnDigits || "" : normalizeNpn(npnDigits);
+  if (!npnPending && !npn) {
+    return { ok: false, message: "Enter your NPN (5–10 digits) or check “NPN pending”." };
   }
 
   return {
@@ -273,7 +359,8 @@ function parseLeadInput(raw: unknown):
     data: {
       ...parsed.data,
       phone,
-      npn,
+      npn: npn || "",
+      npnPending,
       email: parsed.data.email.toLowerCase(),
       consent: true as const,
     },
@@ -291,6 +378,10 @@ export const submitLead = createServerFn({ method: "POST" })
       const origin = request?.headers.get("origin") ?? null;
       const site = request?.headers.get("sec-fetch-site") ?? null;
       if (!isAllowedLeadOrigin(origin, site)) {
+        console.error("[leads] forbidden origin", {
+          host: origin ? safeHost(origin) : null,
+          site,
+        });
         return {
           ok: false,
           code: "forbidden",
@@ -304,8 +395,6 @@ export const submitLead = createServerFn({ method: "POST" })
       }
       const lead = parsed.data;
 
-      // Honeypot: drop silently — do not write CRM, do not look different in status code.
-      // Client should not toast "delivered" for id ignored (handled client-side).
       if (lead.website && lead.website.length > 0) {
         return { ok: true, mode: "webhook", id: "ignored" };
       }
@@ -341,7 +430,8 @@ export const submitLead = createServerFn({ method: "POST" })
         email: lead.email.toLowerCase(),
         phone: lead.phone,
         state: lead.state,
-        npn: lead.npn,
+        npn: lead.npn || null,
+        npnPending: Boolean(lead.npnPending),
         contractedWithPsm: lead.contractedWithPsm,
         message: lead.message || null,
         consent: true,
@@ -368,11 +458,11 @@ export const submitLead = createServerFn({ method: "POST" })
           });
           if (res.ok) {
             void tryInsertLead(id, lead, userAgent, ipHash === "unknown" ? null : ipHash);
+            console.error("[leads] delivered", { mode: "webhook", id, status: res.status });
             return { ok: true, mode: "webhook", id };
           }
           webhookFailed = true;
-          const detail = await res.text().catch(() => "");
-          console.error("[leads] webhook HTTP", res.status, detail.slice(0, 200));
+          console.error("[leads] webhook HTTP", res.status);
         } catch (err) {
           webhookFailed = true;
           console.error(
@@ -389,6 +479,7 @@ export const submitLead = createServerFn({ method: "POST" })
         ipHash === "unknown" ? null : ipHash,
       );
       if (dbOk) {
+        console.error("[leads] delivered", { mode: "database", id });
         return { ok: true, mode: "database", id };
       }
 
@@ -418,6 +509,14 @@ export const submitLead = createServerFn({ method: "POST" })
     }
   });
 
+function safeHost(origin: string): string | null {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return null;
+  }
+}
+
 async function tryInsertLead(
   id: string,
   data: LeadInput,
@@ -445,6 +544,7 @@ async function tryInsertLead(
         ${JSON.stringify({
           ...(data.calculatorSnapshot ?? {}),
           consent: true,
+          npnPending: Boolean(data.npnPending),
         })}::jsonb,
         ${userAgent},
         ${ipHash}
@@ -464,6 +564,7 @@ export function leadFallbackMailto(data: {
   phone: string;
   state: string;
   npn?: string;
+  npnPending?: boolean;
   message: string;
   summary?: string;
 }): string {
@@ -483,7 +584,7 @@ export function leadFallbackMailto(data: {
       `Email: ${data.email}`,
       `Phone: ${data.phone}`,
       `State: ${data.state}`,
-      data.npn ? `NPN: ${data.npn}` : "",
+      data.npnPending ? "NPN: pending / not yet issued" : data.npn ? `NPN: ${data.npn}` : "",
       data.message ? `Focus: ${data.message}` : "",
       "",
       data.summary || "",

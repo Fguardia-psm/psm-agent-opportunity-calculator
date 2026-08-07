@@ -27,6 +27,7 @@ import { JsonLd } from "@/components/calculator/JsonLd";
 import { ResultsJumpNav } from "@/components/calculator/ResultsJumpNav";
 import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
+import { EmbedBreakout } from "@/components/calculator/EmbedBreakout";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
 export const Route = createFileRoute("/")({
@@ -192,6 +193,8 @@ function Home() {
           </Button>
         </div>
       </header>
+
+      <EmbedBreakout />
 
       {showResults && result && <ResultsJumpNav />}
 

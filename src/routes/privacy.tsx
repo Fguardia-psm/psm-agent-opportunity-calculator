@@ -78,7 +78,7 @@ function PrivacyPage() {
               <p>If you request a portfolio review, you provide:</p>
               <ul className="list-disc space-y-1 pl-5">
                 <li>Name, work email, and mobile phone</li>
-                <li>Licensed state and National Producer Number (NPN)</li>
+                <li>Licensed state and National Producer Number (NPN), or an indication that NPN is pending</li>
                 <li>Whether you are already contracted with PSM</li>
                 <li>Confirmation that you are a licensed insurance professional</li>
                 <li>Optional free-text about what you want help with</li>

@@ -8,6 +8,7 @@ import { defaultInputs } from "../src/lib/calculator/defaults.ts";
 import {
   MIN_PERSISTENCY,
   OPPORTUNITY_PRODUCT_IDS,
+  ATTACH_RATES,
   PERSISTENCY_RATES,
   productsFromPrimaryCategories,
 } from "../src/lib/calculator/assumptions.ts";
@@ -27,6 +28,8 @@ function ok(name: string, cond: boolean, detail?: unknown) {
 
 ok("no annuity in opportunity", !OPPORTUNITY_PRODUCT_IDS.some((id) => id.includes("annuity")));
 ok("persistency floor", MIN_PERSISTENCY === 0.85);
+ok("default planning attach 35%", ATTACH_RATES.moderate === 0.35);
+ok("default attach band", ATTACH_RATES.low === 0.2 && ATTACH_RATES.high === 0.5);
 ok(
   "all default pers >= floor",
   Object.values(PERSISTENCY_RATES).every((p) => p >= MIN_PERSISTENCY),

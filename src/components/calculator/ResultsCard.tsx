@@ -144,6 +144,19 @@ export function ResultsCard({ result }: ResultsCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {!hasFullPortfolio && (
+          <div
+            className="rounded-xl border border-border bg-muted/30 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground sm:text-[13px]"
+            role="note"
+          >
+            <span className="font-medium text-foreground">How to read these dollars: </span>
+            Planning uses about {Math.round(effectiveAttach.moderate * 100)}% place rate on
+            eligible clients and about {Math.round(effectivePersistency.moderate * 100)}% annual
+            book retention. Figures are potential and illustrative — not a quote, not guaranteed
+            income, and not advice that any product is suitable for a client. Adjust rates under
+            “Use my contract assumptions.”
+          </div>
+        )}
         {hasFullPortfolio ? (
           <div className="rounded-xl border border-border bg-surface/80 p-5">
             <p className="text-base font-medium leading-relaxed text-foreground">
@@ -160,14 +173,19 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   <p className="text-xs font-semibold uppercase tracking-wide">Year-1 impact</p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  First-year commission only — one-time book attach plus new pipeline
+                  First-year commission only — one-time book attach plus new pipeline. Illustrative.
                 </p>
-                <p className="mt-3 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-foreground sm:text-4xl">
+                <p className="mt-3 text-sm font-medium text-muted-foreground">
+                  Estimated range
+                </p>
+                <p className="mt-1 font-display text-[1.35rem] font-semibold tabular-nums leading-snug text-foreground sm:text-2xl">
+                  {formatCurrency(year1ImpactTotal.low)} – {formatCurrency(year1ImpactTotal.high)}
+                </p>
+                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Planning estimate
+                </p>
+                <p className="mt-0.5 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-foreground sm:text-4xl">
                   {formatCurrency(year1ImpactTotal.moderate)}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-                  Range {formatCurrency(year1ImpactTotal.low)} –{" "}
-                  {formatCurrency(year1ImpactTotal.high)}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground tabular-nums">
                   Book attach {formatCurrency(y1Book)} · New pipeline {formatCurrency(y1Pipe)}
@@ -183,14 +201,20 @@ export function ResultsCard({ result }: ResultsCardProps) {
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Sum of every year — new production plus renewals. This total climbs each year.
+                  Sum of every year — new production plus renewals. Illustrative cumulative path.
                 </p>
-                <p className="mt-3 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-primary sm:text-4xl">
-                  {formatCurrency(pathCumulativeTotal.moderate)}
+                <p className="mt-3 text-sm font-medium text-muted-foreground">
+                  Estimated range
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-                  Range {formatCurrency(pathCumulativeTotal.low)} –{" "}
+                <p className="mt-1 font-display text-[1.35rem] font-semibold tabular-nums leading-snug text-primary sm:text-2xl">
+                  {formatCurrency(pathCumulativeTotal.low)} –{" "}
                   {formatCurrency(pathCumulativeTotal.high)}
+                </p>
+                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Planning estimate
+                </p>
+                <p className="mt-0.5 font-display text-[1.75rem] font-semibold tabular-nums leading-none text-primary sm:text-4xl">
+                  {formatCurrency(pathCumulativeTotal.moderate)}
                 </p>
                 {pathCumulativeTotal.moderate > 0 && year1ImpactTotal.moderate > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">

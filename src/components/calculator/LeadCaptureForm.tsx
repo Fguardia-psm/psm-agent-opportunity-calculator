@@ -19,6 +19,7 @@ import {
   normalizeNpn,
   normalizePhone,
   submitLead,
+  unwrapLeadResult,
 } from "@/lib/leads/submit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,7 @@ interface FormState {
   phone: string;
   state: USStateCode | "";
   npn: string;
+  npnPending: boolean;
   contractedWithPsm: "yes" | "no" | "not-sure" | "";
   message: string;
   website: string;
@@ -67,13 +69,17 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     phone: "",
     state: inputs.state || "",
     npn: "",
+    npnPending: false,
     contractedWithPsm: "",
     message: "",
     website: "",
     consent: false,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState | "consent", string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof FormState | "consent" | "npn", string>>
+  >({});
   const [submitted, setSubmitted] = useState(false);
+  const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [fallbackMailto, setFallbackMailto] = useState<string | null>(null);
@@ -83,15 +89,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     (value: FormState[K]) => {
       setForm((f) => ({ ...f, [key]: value }));
       setErrors((e) => {
-        if (!e[key] && key !== "consent") return e;
+        if (!e[key as keyof typeof e]) return e;
         const next = { ...e };
-        delete next[key];
+        delete next[key as keyof typeof e];
         return next;
       });
     };
 
   const validate = (): boolean => {
-    const next: Partial<Record<keyof FormState | "consent", string>> = {};
+    const next: Partial<Record<keyof FormState | "consent" | "npn", string>> = {};
     if (!form.firstName.trim()) next.firstName = "First name is required";
     if (!form.lastName.trim()) next.lastName = "Last name is required";
     if (!form.email.trim()) next.email = "Email is required";
@@ -100,8 +106,12 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     else if (!normalizePhone(form.phone))
       next.phone = "Enter a valid 10-digit U.S. phone number";
     if (!form.state) next.state = "State is required";
-    if (!form.npn.trim()) next.npn = "NPN is required";
-    else if (!normalizeNpn(form.npn)) next.npn = "Enter 5–10 digits (numbers only)";
+    if (!form.npnPending) {
+      if (!form.npn.trim()) next.npn = "Enter your NPN or check “NPN pending”";
+      else if (!normalizeNpn(form.npn)) next.npn = "Enter 5–10 digits (numbers only)";
+    } else if (form.npn.trim() && !normalizeNpn(form.npn)) {
+      next.npn = "If entered, NPN must be 5–10 digits";
+    }
     if (!form.contractedWithPsm) next.contractedWithPsm = "Please select an option";
     if (!form.consent) next.consent = "Please confirm you are an insurance professional";
     setErrors(next);
@@ -114,9 +124,16 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     email: form.email.trim().toLowerCase(),
     phone: normalizePhone(form.phone) || form.phone.trim(),
     state: form.state,
-    npn: normalizeNpn(form.npn) || form.npn.trim(),
+    npn: form.npnPending
+      ? normalizeNpn(form.npn) || ""
+      : normalizeNpn(form.npn) || form.npn.trim(),
     contractedWithPsm: form.contractedWithPsm,
-    message: form.message.trim(),
+    message: [
+      form.npnPending ? "[NPN pending / not yet issued]" : "",
+      form.message.trim(),
+    ]
+      .filter(Boolean)
+      .join(" "),
     calculatorSnapshot: result
       ? {
           activeClients: result.activeClients,
@@ -145,6 +162,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
       phone: lead.phone,
       state: lead.state || "",
       npn: lead.npn,
+      npnPending: form.npnPending,
       message: lead.message,
       summary: result
         ? `Year-1 planning: ${formatCurrency(result.year1ImpactTotal.moderate)}; ${result.horizonYears}-year path: ${formatCurrency(result.pathCumulativeTotal.moderate)}`
@@ -156,12 +174,13 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
     setServerError(null);
     setFallbackMailto(null);
     if (!validate()) return;
+    if (submitting) return;
 
     const lead = buildLead();
     setSubmitting(true);
 
     try {
-      const res = (await submitLead({
+      const res = await submitLead({
         data: {
           firstName: lead.firstName,
           lastName: lead.lastName,
@@ -169,6 +188,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
           phone: lead.phone,
           state: String(lead.state || "").toUpperCase(),
           npn: lead.npn,
+          npnPending: form.npnPending,
           contractedWithPsm: lead.contractedWithPsm as "yes" | "no" | "not-sure",
           message: lead.message || "",
           consent: true as const,
@@ -190,48 +210,38 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               }
             : null,
         },
-      })) as Awaited<ReturnType<typeof submitLead>>;
+      });
 
-      const resultBody =
-        res && typeof res === "object" && "ok" in res
-          ? res
-          : res && typeof res === "object" && "result" in (res as object)
-            ? ((res as { result: typeof res }).result as typeof res)
-            : res;
+      const resultBody = unwrapLeadResult(res);
 
-      if (resultBody && typeof resultBody === "object" && "ok" in resultBody && resultBody.ok) {
-        const id =
-          "id" in resultBody && typeof (resultBody as { id?: string }).id === "string"
-            ? (resultBody as { id: string }).id
-            : "";
-        // Honeypot / ignored: do not claim CRM delivery or store anything
-        if (id === "ignored") {
+      if (resultBody?.ok) {
+        if (resultBody.id === "ignored") {
           setSubmitted(true);
+          setDeliveryId(null);
           return;
         }
         try {
-          // Metadata only — never store email/phone/NPN in localStorage
           const key = "psm-opportunity-lead-meta";
           const existing = JSON.parse(localStorage.getItem(key) || "[]") as {
             id: string;
             submittedAt: string;
           }[];
-          existing.push({ id, submittedAt: lead.submittedAt });
+          existing.push({ id: resultBody.id, submittedAt: lead.submittedAt });
           localStorage.setItem(key, JSON.stringify(existing.slice(-10)));
-          // Purge legacy full-PII key if present
           localStorage.removeItem("psm-opportunity-leads");
         } catch {
-          /* ignore quota */
+          /* ignore */
         }
         onSubmit(lead);
+        setDeliveryId(resultBody.id);
         setSubmitted(true);
         toast.success("Request delivered to PSM");
         return;
       }
 
       const message =
-        resultBody && typeof resultBody === "object" && "message" in resultBody
-          ? String((resultBody as { message: string }).message)
+        resultBody && !resultBody.ok
+          ? resultBody.message
           : "We could not deliver your request online. Use the email fallback below.";
 
       setServerError(message);
@@ -256,9 +266,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
 
   if (submitted) {
     return (
-      <Card className="border-accent/25 bg-accent/[0.04] print:hidden">
+      <Card
+        id="lead-form-success"
+        data-testid="lead-success"
+        className="border-accent/25 bg-accent/[0.04] print:hidden"
+        role="status"
+        aria-live="polite"
+      >
         <CardContent className="flex flex-col items-center gap-3 px-4 py-10 text-center sm:px-6">
-          <CheckCircle2 className="size-10 text-accent" strokeWidth={1.75} />
+          <CheckCircle2 className="size-10 text-accent" strokeWidth={1.75} aria-hidden />
           <h3 className="font-display text-xl font-semibold text-foreground">
             Request received — a PSM teammate will follow up
           </h3>
@@ -266,6 +282,11 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
             Bring your estimate (or the save link above). We will focus on the open lines that
             matter for your practice, not a generic pitch.
           </p>
+          {deliveryId && (
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              Reference: {deliveryId.slice(0, 8)}
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -287,8 +308,8 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
         <CardDescription className="text-sm leading-relaxed">
           {result && !result.hasFullPortfolio && y1 && path ? (
             <>
-              You have seen the math — about {y1} Year-1 planning impact and about {path} over{" "}
-              {result.horizonYears} years on open lines
+              You have seen the illustrative math — about {y1} Year-1 planning impact and about{" "}
+              {path} over {result.horizonYears} years on open lines
               {top.length > 0 ? ` (${top.join(", ")})` : ""}. Tell us how to reach you. No
               obligation to contract.
             </>
@@ -324,10 +345,16 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 autoComplete="given-name"
                 autoCapitalize="words"
                 maxLength={80}
+                aria-invalid={Boolean(errors.firstName)}
+                aria-describedby={errors.firstName ? "firstName-err" : undefined}
                 className={fieldClass("firstName")}
                 placeholder="Jane"
               />
-              {errors.firstName && <p className="text-xs text-danger">{errors.firstName}</p>}
+              {errors.firstName && (
+                <p id="firstName-err" className="text-xs text-danger" role="alert">
+                  {errors.firstName}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lastName">Last name</Label>
@@ -339,10 +366,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 autoComplete="family-name"
                 autoCapitalize="words"
                 maxLength={80}
+                aria-invalid={Boolean(errors.lastName)}
                 className={fieldClass("lastName")}
                 placeholder="Agent"
               />
-              {errors.lastName && <p className="text-xs text-danger">{errors.lastName}</p>}
+              {errors.lastName && (
+                <p className="text-xs text-danger" role="alert">
+                  {errors.lastName}
+                </p>
+              )}
             </div>
           </div>
 
@@ -359,10 +391,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 onBlur={() => set("email")(form.email.trim().toLowerCase())}
                 autoComplete="email"
                 maxLength={200}
+                aria-invalid={Boolean(errors.email)}
                 className={fieldClass("email")}
                 placeholder="you@agency.com"
               />
-              {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-xs text-danger" role="alert">
+                  {errors.email}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">Mobile phone</Label>
@@ -375,10 +412,15 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.phone}
                 onChange={(e) => set("phone")(formatPhoneInput(e.target.value))}
                 maxLength={14}
+                aria-invalid={Boolean(errors.phone)}
                 className={cn(fieldClass("phone"), "tabular-nums")}
                 placeholder="(555) 555-5555"
               />
-              {errors.phone && <p className="text-xs text-danger">{errors.phone}</p>}
+              {errors.phone && (
+                <p className="text-xs text-danger" role="alert">
+                  {errors.phone}
+                </p>
+              )}
             </div>
           </div>
 
@@ -392,6 +434,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 <SelectTrigger
                   id="lead-state"
                   className={cn("h-12", errors.state && "border-danger")}
+                  aria-invalid={Boolean(errors.state)}
                 >
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
@@ -403,11 +446,18 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                   ))}
                 </SelectContent>
               </Select>
-              {errors.state && <p className="text-xs text-danger">{errors.state}</p>}
+              {errors.state && (
+                <p className="text-xs text-danger" role="alert">
+                  {errors.state}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="npn">
-                NPN <span className="font-normal text-muted-foreground">(required)</span>
+                NPN{" "}
+                <span className="font-normal text-muted-foreground">
+                  {form.npnPending ? "(optional while pending)" : "(required)"}
+                </span>
               </Label>
               <Input
                 id="npn"
@@ -418,24 +468,46 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
                 value={form.npn}
                 onChange={(e) => set("npn")(formatNpnInput(e.target.value))}
                 maxLength={10}
+                disabled={false}
+                aria-invalid={Boolean(errors.npn)}
                 className={cn(fieldClass("npn"), "tabular-nums")}
                 placeholder="1234567"
               />
-              <p className="text-[11px] text-muted-foreground">
-                National Producer Number — numbers only, 5–10 digits
-              </p>
-              {errors.npn && <p className="text-xs text-danger">{errors.npn}</p>}
+              <label className="flex cursor-pointer items-start gap-2 pt-1">
+                <Checkbox
+                  checked={form.npnPending}
+                  onCheckedChange={(v) => {
+                    set("npnPending")(v === true);
+                    setErrors((e) => {
+                      const n = { ...e };
+                      delete n.npn;
+                      return n;
+                    });
+                  }}
+                  className="mt-0.5 size-5"
+                  id="npn-pending"
+                />
+                <span className="text-xs leading-snug text-muted-foreground">
+                  NPN pending — I am licensed or in process and do not have my number handy
+                </span>
+              </label>
+              {errors.npn && (
+                <p className="text-xs text-danger" role="alert">
+                  {errors.npn}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Are you currently contracted with PSM?</Label>
+            <Label id="contracted-label">Are you currently contracted with PSM?</Label>
             <RadioGroup
               value={form.contractedWithPsm || undefined}
               onValueChange={(v) =>
                 set("contractedWithPsm")(v as FormState["contractedWithPsm"])
               }
               className="grid grid-cols-1 gap-2"
+              aria-labelledby="contracted-label"
             >
               {(
                 [
@@ -460,7 +532,9 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               ))}
             </RadioGroup>
             {errors.contractedWithPsm && (
-              <p className="text-xs text-danger">{errors.contractedWithPsm}</p>
+              <p className="text-xs text-danger" role="alert">
+                {errors.contractedWithPsm}
+              </p>
             )}
           </div>
 
@@ -500,10 +574,17 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               .
             </span>
           </label>
-          {errors.consent && <p className="text-xs text-danger">{errors.consent}</p>}
+          {errors.consent && (
+            <p className="text-xs text-danger" role="alert">
+              {errors.consent}
+            </p>
+          )}
 
           {serverError && (
-            <div className="rounded-xl border border-danger/30 bg-danger/5 px-3.5 py-3 text-sm text-foreground">
+            <div
+              className="rounded-xl border border-danger/30 bg-danger/5 px-3.5 py-3 text-sm text-foreground"
+              role="alert"
+            >
               <p className="font-medium text-danger">Submission not delivered online</p>
               <p className="mt-1 text-xs text-muted-foreground">{serverError}</p>
               {fallbackMailto && (
@@ -523,6 +604,7 @@ export function LeadCaptureForm({ inputs, result, onSubmit }: LeadCaptureFormPro
               size="lg"
               className="min-h-12 w-full text-base sm:w-auto"
               disabled={submitting}
+              aria-busy={submitting}
             >
               <Send className="size-4" />
               {submitting ? "Sending…" : "Request my portfolio review"}

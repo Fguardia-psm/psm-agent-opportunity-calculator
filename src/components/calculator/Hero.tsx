@@ -37,7 +37,7 @@ export function Hero({ onStart }: HeroProps) {
             <ArrowRight className="size-4" />
           </Button>
           <p className="text-center text-sm text-muted-foreground sm:text-left">
-            Free · Private practice numbers only · No consumer data
+            Free · Illustrative estimates · Practice numbers only · No consumer data
           </p>
         </div>
 
