@@ -118,11 +118,36 @@ export function decodeInputs(encoded: string): CalculatorInputs | null {
   }
 }
 
+/**
+ * Public base for copy/share links (no trailing slash).
+ * Prefer marketing / branded URL from env so agents never see *.vercel.app.
+ * Set VITE_PUBLIC_SITE_URL (or VITE_PUBLIC_APP_URL) in Vercel and redeploy.
+ */
+export function publicShareBase(origin?: string): string {
+  if (origin?.trim()) return origin.trim().replace(/\/+$/, "");
+
+  const fromEnv = (
+    (typeof import.meta !== "undefined" &&
+      (import.meta as ImportMeta & { env?: Record<string, string> }).env
+        ?.VITE_PUBLIC_SITE_URL) ||
+    (typeof import.meta !== "undefined" &&
+      (import.meta as ImportMeta & { env?: Record<string, string> }).env
+        ?.VITE_PUBLIC_APP_URL) ||
+    ""
+  ).trim();
+
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") {
+    return (window.location.origin + window.location.pathname).replace(/\/+$/, "");
+  }
+  return "";
+}
+
 export function buildShareUrl(inputs: CalculatorInputs, origin?: string): string {
   const enc = encodeInputs(inputs);
-  const base =
-    origin ||
-    (typeof window !== "undefined" ? window.location.origin + window.location.pathname : "");
+  const base = publicShareBase(origin);
+  if (!base) return `?s=${enc}`;
   return `${base}?s=${enc}`;
 }
 
