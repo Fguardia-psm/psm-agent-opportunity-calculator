@@ -35,11 +35,11 @@ export function ResultsJumpNav({ className }: ResultsJumpNavProps) {
             key={link.href}
             href={link.href}
             className={cn(
-              "snap-start shrink-0 rounded-full border px-3.5 text-xs font-semibold transition-colors",
+              "snap-start shrink-0 rounded-md border px-3.5 text-xs font-semibold transition-colors",
               "inline-flex min-h-11 items-center justify-center sm:min-h-9 sm:px-3 sm:py-1.5 sm:text-xs sm:font-medium",
               "primary" in link && link.primary
-                ? "border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.04] hover:text-foreground",
+                ? "border-primary/30 bg-primary text-primary-foreground hover:bg-[#c61536]"
+                : "border-border bg-muted/40 text-muted-foreground hover:border-accent/40 hover:bg-accent/[0.06] hover:text-foreground",
             )}
           >
             <span className="sm:hidden">{link.short}</span>

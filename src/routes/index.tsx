@@ -169,43 +169,46 @@ function Home() {
     <div className="min-h-[calc(100dvh-var(--grok-banner-h,0px))] bg-bg text-foreground">
       <JsonLd />
 
-      <header className="sticky top-[var(--grok-banner-h,0px)] z-40 border-b border-border/80 bg-surface/95 backdrop-blur-md print:hidden">
+      <header className="sticky top-[var(--grok-banner-h,0px)] z-40 border-b border-border bg-surface print:hidden">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-            <div
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-[11px] font-bold tracking-tight text-primary-foreground"
-              aria-hidden
-            >
-              PSM
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight text-foreground">
-                PSM Brokerage
-              </p>
-              <p className="hidden truncate text-[11px] text-muted-foreground sm:block">
-                Agent Opportunity Calculator
-              </p>
-            </div>
-          </div>
+          <a
+            href="https://www.psmbrokerage.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-w-0 items-center gap-2.5 sm:gap-3"
+          >
+            <img
+              src="/psm-logo.png"
+              alt="PSM Brokerage"
+              className="h-7 w-auto sm:h-8"
+              width={140}
+              height={46}
+            />
+            <span className="hidden h-6 w-px bg-border sm:block" aria-hidden />
+            <span className="hidden min-w-0 flex-col sm:flex">
+              <span className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-label">
+                Opportunity Calculator
+              </span>
+            </span>
+          </a>
           <nav
-            className="hidden items-center gap-4 text-sm text-muted-foreground md:flex"
+            className="hidden items-center gap-5 text-sm font-medium text-muted-foreground md:flex"
             aria-label="Page"
           >
-            <a href="#how-it-works" className="hover:text-foreground">
+            <a href="#how-it-works" className="hover:text-accent">
               How it works
             </a>
-            <a href="#faq" className="hover:text-foreground">
+            <a href="#faq" className="hover:text-accent">
               FAQ
             </a>
             {showResults && (
-              <a href="#results" className="font-medium text-primary hover:text-primary/80">
+              <a href="#results" className="font-semibold text-primary hover:text-primary/90">
                 Results
               </a>
             )}
           </nav>
           <Button
             size="sm"
-            variant="outline"
             className="min-h-10 shrink-0 px-3.5 sm:min-h-9"
             onClick={() =>
               calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })

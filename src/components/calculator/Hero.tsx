@@ -7,19 +7,21 @@ interface HeroProps {
 
 export function Hero({ onStart }: HeroProps) {
   return (
-    <section className="relative overflow-hidden border-b border-border/80 bg-hero">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,color-mix(in_oklab,var(--color-accent)_12%,transparent),transparent_55%)]" />
+    <section className="relative overflow-hidden border-b border-border bg-hero">
+      {/* Soft sage wash — matches PSM marketing sections */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,color-mix(in_oklab,var(--color-accent)_14%,transparent),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />
       <div className="relative mx-auto max-w-5xl px-4 pb-10 pt-8 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent sm:mb-4 sm:text-xs">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-label sm:mb-4 sm:text-xs">
           Free tool for independent insurance agents
         </p>
 
-        <div className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-surface/80 px-3 py-1.5 text-[11px] font-medium text-muted-foreground backdrop-blur-sm sm:mb-5 sm:text-xs">
+        <div className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-medium text-muted-foreground sm:mb-5 sm:text-xs">
           <span className="size-1.5 shrink-0 rounded-full bg-accent" />
           <span className="truncate">PSM Brokerage · Agent Opportunity Calculator</span>
         </div>
 
-        <h1 className="font-display max-w-3xl text-balance text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground sm:text-5xl sm:leading-[1.12] lg:text-[3.15rem]">
+        <h1 className="font-display max-w-3xl text-balance text-[1.75rem] font-medium leading-tight tracking-tight text-foreground sm:text-5xl sm:leading-[1.12] lg:text-[3.15rem]">
           See how much revenue you may be leaving on the table
         </h1>
 
@@ -36,10 +38,18 @@ export function Hero({ onStart }: HeroProps) {
             Calculate My Opportunity
             <ArrowRight className="size-4" />
           </Button>
-          <p className="text-center text-sm text-muted-foreground sm:text-left">
-            Free · Illustrative estimates · Practice numbers only · No consumer data
-          </p>
+          <a
+            href="https://www.psmbrokerage.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-12 items-center justify-center rounded-md border border-accent/40 bg-transparent px-5 text-sm font-semibold text-brand-sage-deep transition-colors hover:bg-accent/10 sm:h-14 sm:px-6"
+          >
+            Visit PSM Brokerage
+          </a>
         </div>
+        <p className="mt-3 text-center text-sm text-muted-foreground sm:text-left">
+          Free · Illustrative estimates · Practice numbers only · No consumer data
+        </p>
 
         <ul className="mt-8 grid grid-cols-2 gap-2 sm:mt-10 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
           {[
@@ -50,7 +60,7 @@ export function Hero({ onStart }: HeroProps) {
           ].map(({ icon: Icon, label }) => (
             <li
               key={label}
-              className="flex min-h-11 items-center gap-2 rounded-xl border border-border/70 bg-surface/60 px-2.5 py-2.5 text-xs text-muted-foreground backdrop-blur-sm sm:gap-2.5 sm:px-3.5 sm:py-3 sm:text-sm"
+              className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-xs text-muted-foreground sm:gap-2.5 sm:px-3.5 sm:py-3 sm:text-sm"
             >
               <Icon className="size-3.5 shrink-0 text-accent sm:size-4" strokeWidth={2} />
               <span className="leading-snug">{label}</span>
