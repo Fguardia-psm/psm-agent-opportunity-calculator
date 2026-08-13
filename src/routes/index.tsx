@@ -26,7 +26,10 @@ import { ResultsJumpNav } from "@/components/calculator/ResultsJumpNav";
 import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
 import { EmbedBreakout } from "@/components/calculator/EmbedBreakout";
-import { EmbedHeightReporter } from "@/components/calculator/EmbedHeightReporter";
+import {
+  EmbedHeightReporter,
+  notifyEmbedHeight,
+} from "@/components/calculator/EmbedHeightReporter";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
 /** Recharts is heavy — load only when results are shown (eblast first paint). */
@@ -45,6 +48,18 @@ function ChartFallback() {
   );
 }
 
+function useInIframe() {
+  const [inIframe, setInIframe] = useState(false);
+  useEffect(() => {
+    try {
+      setInIframe(window.self !== window.top);
+    } catch {
+      setInIframe(true);
+    }
+  }, []);
+  return inIframe;
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -58,6 +73,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const inIframe = useInIframe();
   const [inputs, setInputs] = useState<CalculatorInputs>(() => defaultInputs());
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [showResults, setShowResults] = useState(false);
@@ -96,6 +112,18 @@ function Home() {
     };
   }, []);
 
+  // Keep HubSpot iframe height in sync when results open/close or expand
+  useEffect(() => {
+    if (!restored) return;
+    notifyEmbedHeight();
+    const t = window.setTimeout(() => notifyEmbedHeight(), 300);
+    const t2 = window.setTimeout(() => notifyEmbedHeight(), 900);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(t2);
+    };
+  }, [restored, showResults, result]);
+
   const handleCalculate = useCallback(() => {
     if (recalcTimer.current) {
       clearTimeout(recalcTimer.current);
@@ -113,9 +141,11 @@ function Home() {
     }
     setResult(next);
     setShowResults(true);
+    notifyEmbedHeight();
     requestAnimationFrame(() => {
       setTimeout(() => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        notifyEmbedHeight();
       }, 80);
     });
   }, [inputs]);
@@ -131,8 +161,10 @@ function Home() {
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", window.location.pathname);
     }
+    notifyEmbedHeight();
     requestAnimationFrame(() => {
       calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      notifyEmbedHeight();
     });
   }, []);
 
@@ -144,11 +176,11 @@ function Home() {
       };
       setInputs(synced);
       if (!showResults) return;
-      // Debounce multi-year path math while agents type client counts / rates
       if (recalcTimer.current) clearTimeout(recalcTimer.current);
       recalcTimer.current = setTimeout(() => {
         setResult(calculateOpportunity(synced));
         recalcTimer.current = null;
+        notifyEmbedHeight();
       }, 120);
     },
     [showResults],
@@ -167,7 +199,13 @@ function Home() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-var(--grok-banner-h,0px))] bg-bg text-foreground">
+    <div
+      className={
+        inIframe
+          ? "bg-bg text-foreground"
+          : "min-h-[calc(100dvh-var(--grok-banner-h,0px))] bg-bg text-foreground"
+      }
+    >
       <JsonLd />
       <EmbedHeightReporter />
 

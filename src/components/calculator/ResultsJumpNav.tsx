@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -13,15 +14,31 @@ interface ResultsJumpNavProps {
   className?: string;
 }
 
+function useInIframe() {
+  const [inIframe, setInIframe] = useState(false);
+  useEffect(() => {
+    try {
+      setInIframe(window.self !== window.top);
+    } catch {
+      setInIframe(true);
+    }
+  }, []);
+  return inIframe;
+}
+
 export function ResultsJumpNav({ className }: ResultsJumpNavProps) {
+  const inIframe = useInIframe();
+
   return (
     <nav
       aria-label="Jump to results section"
       className={cn(
-        "sticky z-30 border-b border-border/80 bg-surface/95 backdrop-blur-md print:hidden",
+        "z-30 border-b border-border/80 bg-surface/95 backdrop-blur-md print:hidden",
+        // Sticky only on standalone site — inside HubSpot iframe it creates a second scroll window
+        inIframe ? "relative" : "sticky",
         className,
       )}
-      style={{ top: "var(--app-sticky-offset)" }}
+      style={inIframe ? undefined : { top: "var(--app-sticky-offset)" }}
     >
       <div
         className={cn(
