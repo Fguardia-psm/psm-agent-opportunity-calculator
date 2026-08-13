@@ -26,6 +26,7 @@ import { ResultsJumpNav } from "@/components/calculator/ResultsJumpNav";
 import { NextStepCta } from "@/components/calculator/NextStepCta";
 import { Button } from "@/components/ui/button";
 import { EmbedBreakout } from "@/components/calculator/EmbedBreakout";
+import { EmbedHeightReporter } from "@/components/calculator/EmbedHeightReporter";
 import { PRIVACY_NOTE } from "@/lib/calculator/assumptions";
 
 /** Recharts is heavy — load only when results are shown (eblast first paint). */
@@ -168,6 +169,7 @@ function Home() {
   return (
     <div className="min-h-[calc(100dvh-var(--grok-banner-h,0px))] bg-bg text-foreground">
       <JsonLd />
+      <EmbedHeightReporter />
 
       <EmbedBreakout />
 
