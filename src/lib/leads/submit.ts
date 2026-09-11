@@ -399,6 +399,19 @@ export const submitLead = createServerFn({ method: "POST" })
         return { ok: true, mode: "webhook", id: "ignored" };
       }
 
+      const vercelEnv = process.env.VERCEL_ENV?.trim();
+      const allowPreviewLeads =
+        process.env.ALLOW_PREVIEW_LEADS === "1" ||
+        process.env.ALLOW_PREVIEW_LEADS === "true";
+      if (vercelEnv === "preview" && !allowPreviewLeads) {
+        return {
+          ok: false,
+          code: "not_configured",
+          message:
+            "Preview deployments do not accept live NPNs. Open the production calculator, or ask ops to set ALLOW_PREVIEW_LEADS=1 on a dedicated test webhook.",
+        };
+      }
+
       const xf = request?.headers.get("x-forwarded-for");
       const ip = xf?.split(",")[0]?.trim() || request?.headers.get("x-real-ip") || null;
       const ipHash = ip ? createHash("sha256").update(ip).digest("hex").slice(0, 32) : "unknown";
