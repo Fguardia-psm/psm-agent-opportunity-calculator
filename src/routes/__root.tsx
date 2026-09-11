@@ -1,7 +1,6 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
-import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import appCss from "../styles.css?url";
 
 const APP_NAME =
@@ -75,7 +74,6 @@ function RootDocument() {
         <a href="#calculator" className="sr-only skip-link">
           Skip to calculator
         </a>
-        <CreatedWithGrokBanner />
         <AuthProvider>
           <Outlet />
         </AuthProvider>
